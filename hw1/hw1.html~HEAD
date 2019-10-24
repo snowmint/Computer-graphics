@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            #info {
+                position: absolute;
+                top: 10px; width: 100%;
+
+                padding: 5px;
+                text-align: center;
+                font-size: 20px;
+                color: #6f7896;
+            }
+
+            body {
+                /*background-image: linear-gradient(to top, #fbc2eb 0%, #a6c1ee 100%);*/
+                background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                margin: 0px;
+                overflow: hidden;
+            }
+
+            button {
+                border: none;
+                color: #6f7896;
+                background-color: Transparent;
+                border-radius: 8px;
+                transition-duration: 0.4s;
+                /* Safari */
+                transition-duration: 0.4s;
+                border: 1px solid #6f7896;
+            }
+
+            button:hover {
+                border: 1px solid #96B9F2;
+                background-color: Transparent;
+                color: #6f7896;
+                box-shadow: 0 5px 20px 0 rgba( 0, 0, 0, 0.54), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id='info'> Computer Graphic in Three.JS <br>
+            <button id="toggle" style="width:20%">Toggle</button>
+            <button id="change" style="width:20%">Quartz</button>
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.js"></script>
+        <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        
+        <script>
+            javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+            
+            var renderer, scene, camera;
+            var cube, circleClock;//, controls;
+            var angle = -Math.PI/2;  // initialization IMPORTANT!
+            var turn = false;
+            var work, sector_ani;
+            var count = 0;
+            var timer, clock_table = [];
+            var change, mode = 1;
+            var ani_control, ani_control2;
+            
+            init();
+            animate(mode);
+            
+            $('#change').click(function(){
+                if(mode == 1) {
+                    mode = 2;
+                }else if (mode == 2){
+                    mode = 3;
+                }else if(mode == 3){
+                    mode = 1;
+                }
+                $(this).text(function(i, v){
+                    if(v == "Quartz") return "Circle";
+                    else if(v == "Circle") return "Analog";
+                    else if(v == "Analog") return "Quartz"
+                });
+                //mode = !mode;
+                if(mode == 1) {
+                    //init(mode);
+                    cube.visible = true;
+                    circleClock.visible = false;
+                    cancelAnimationFrame(ani_control);
+                    cancelAnimationFrame(ani_control2);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }
+                else if(mode == 2) {
+                    //init();
+                    cube.visible = true;
+                    circleClock.visible = false;
+                    cancelAnimationFrame(ani_control);
+                    cancelAnimationFrame(ani_control2);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }else if(mode == 3) {
+                    cube.visible = false;
+                    circleClock.visible = true;
+                    cancelAnimationFrame(ani_control);
+                    cancelAnimationFrame(ani_control2);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }
+            });
+            
+            $('#toggle').click(function(){
+                turn = !turn;
+                //console.log(turn);
+                //console.log(mode);
+            });
+
+            function init () {
+                 
+                var width = window.innerWidth;
+                var height = window.innerHeight;
+                
+                renderer = new THREE.WebGLRenderer({
+                    alpha: true
+                });
+                document.body.appendChild (renderer.domElement);
+                renderer.setSize (width, height);
+
+                scene = new THREE.Scene();
+
+                camera = new THREE.PerspectiveCamera (35, width/height, 1, 100);
+                camera.position.y = 0;
+                camera.position.z = 40;
+                camera.lookAt (new THREE.Vector3(0,0,0));
+
+                window.addEventListener('resize', onWindowResize, false);
+                //real-time change width and height of window
+                ///////////////////////////////////////////////////////////////
+                var cubeGeometry = new THREE.BoxGeometry (8.8,0.2,0.2);
+                var cubeMaterial = new THREE.MeshBasicMaterial( { color: 0x000000, opacity: 0.5,transparent: true} );
+                cube = new THREE.Mesh (cubeGeometry, cubeMaterial);
+                scene.add (cube);
+                
+                var geometry = new THREE.CircleGeometry( 10, 50);
+                var material = new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5,transparent: true, side: THREE.DoubleSide} );
+                var circle = new THREE.Mesh( geometry, material );
+                scene.add( circle );
+
+                var axes = new THREE.AxesHelper (5);
+                scene.add (axes);
+                
+                var cubeMesh = [];
+                material_child = new THREE.MeshBasicMaterial({color: 0xad4545, opacity: 0.5,transparent: true});
+                //create child cube mesh
+                cubeMesh[0] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[1] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[2] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[3] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+
+                    //--> Set child cube world positions before the attachment to parentCube mesh
+                cubeMesh[0].position.set(10,0,0);
+                cubeMesh[1].position.set(-10,0,0);
+                cubeMesh[2].position.set(0,10,0);
+                cubeMesh[2].rotation.set(0, 0, Math.PI/2);
+                cubeMesh[3].position.set(0,-10,0);
+                cubeMesh[3].rotation.set(0, 0, -Math.PI/2);
+                
+                for (var i = 0; i < 4; i++)
+                    circle.add(cubeMesh[i]);
+                
+                var secondMesh = [];
+                material_secondchild = new THREE.MeshBasicMaterial({color: 0x52609e, opacity: 0.5,transparent: true});
+                var ura_angle = 0;
+                for (var i = 0; i < 60; i++) {
+                    ura_angle += Math.PI*2/60;
+                    secondMesh[i] = new THREE.Mesh(new THREE.BoxGeometry (0.5,0.2,0.2), material_secondchild);
+                    secondMesh[i].position.set ( 8*Math.cos(-ura_angle)*1.15, 8*Math.sin(-ura_angle)*1.15, 0);
+                    secondMesh[i].rotation.z = -ura_angle;
+                }
+                for (var i = 0; i < 60; i++)
+                    circle.add(secondMesh[i]);
+                for (var i = 0; i < 60; i++){
+                    clock_table[i] = -Math.PI/2 + (i*(Math.PI*2/60));
+                }
+                
+                var cir_clock = new THREE.CircleGeometry( 10, 50,  Math.PI/2, -0.0005);//(thetastart, thetalength)
+                var cmaterial = new THREE.MeshBasicMaterial( { color: 0x85a5c9, opacity: 0.5,transparent: true, side: THREE.DoubleSide} );
+                circleClock = new THREE.Mesh( cir_clock, cmaterial );
+                scene.add(circleClock);
+                circleClock.visible = false;
+            }
+
+            function onWindowResize() {
+                var width = window.innerWidth;
+                var height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+
+            function render() {
+                renderer.render(scene, camera);
+            }
+
+            function RecurringTimer(callback, delay) {
+                var timerId, start, remaining = delay;
+                this.pause = function() {
+                    window.clearTimeout(timerId);
+                    remaining -= new Date() - start;
+                };
+                var resume = function() {
+                    start = new Date();
+                    timerId = window.setTimeout(function() {
+                        remaining = delay;
+                        resume();
+                        callback();
+                    }, remaining);
+                };
+                this.resume = resume;
+                this.resume();
+            }
+            
+            function animate(mode) {
+                //console.log("*mode = " + mode);
+                if(mode == 1){
+                    ani_control = requestAnimationFrame(first_analog);
+                }
+                else if(mode == 2){
+                    sector_ani = window.setInterval(second_quartz, 1000);
+                }
+                else if(mode == 3){
+                    ani_control2 = requestAnimationFrame(third_sector);
+                }
+            }
+            
+            function first_analog(){
+                var second_around = Math.PI/30;
+                var minute_around = second_around/60;
+                if (turn) angle += minute_around;
+                cube.position.set ( 8*Math.cos(-angle)*0.55, 8*Math.sin(-angle)*0.55, 0);
+                cube.rotation.z = -angle;
+                ani_control = requestAnimationFrame(first_analog);
+                render();
+            }
+            function second_quartz() {
+                var second_around = Math.PI*2/60;
+                
+                if (turn) {
+                    var int_sec = parseInt(((angle - (-Math.PI/2))/second_around)+0.5);
+                    angle = (int_sec*second_around)+(-Math.PI/2);
+                    angle += second_around;
+                }
+                cube.position.set ( 8*Math.cos(-angle)*0.55, 8*Math.sin(-angle)*0.55, 0);
+                cube.rotation.z = -angle;
+                render();
+            }
+            function third_sector() {
+                var second_around = Math.PI/30;
+                var minute_around = second_around/60;
+                if (turn) {
+                    angle += minute_around;
+                }
+                scene.remove(circleClock);
+                circleClock = createMesh(new THREE.CircleGeometry(10, 50, Math.PI/2, (-angle-Math.PI/2)%(Math.PI*2)));
+                scene.add(circleClock);
+                //console.log(circleClock.geometry.parameters.thetaLength);
+                ani_control2 = requestAnimationFrame(third_sector);
+                render();
+            }
+
+            function createMesh(geometry) {
+                let cmaterial = new THREE.MeshBasicMaterial( { color: 0x85a5c9, opacity: 0.5,transparent: true, side: THREE.DoubleSide} );
+                let circle = new THREE.Mesh(geometry, cmaterial);
+                return circle;
+            }
+
+        </script>
+    </body>
+</html>

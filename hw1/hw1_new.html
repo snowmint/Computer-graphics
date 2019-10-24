@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            #info {
+                position: absolute;
+                top: 10px; width: 100%;
+
+                padding: 5px;
+                text-align: center;
+                font-size: 20px;
+                color: #ffffff
+            }
+
+            body {
+                background-image: linear-gradient(to top, #fbc2eb 0%, #a6c1ee 100%);
+                margin: 0px;
+                overflow: hidden;
+            }
+
+            button {
+                border: none;
+                color: white;
+                background-color: Transparent;
+                border-radius: 8px;
+                transition-duration: 0.4s;
+                /* Safari */
+                transition-duration: 0.4s;
+                border: 1px solid #ffffff;
+            }
+
+            button:hover {
+                border: 1px solid #96B9F2;
+                background-color: Transparent;
+                color: white;
+                box-shadow: 0 5px 20px 0 rgba( 0, 0, 0, 0.54), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id='info'> Game in Three.JS <br>
+            <button id="toggle" style="width:20%">Toggle</button>
+            <button id="change" style="width:20%">Analog</button>
+            <!--div>Count: <span id="counter">0</span> 秒</div-->
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.js"></script>
+        <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        
+        <script>
+            javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+            
+            var renderer, scene, camera;
+            var controls, cube, circleClock;
+            var angle = -Math.PI/2;  // initialization IMPORTANT!
+            var turn = false;
+            var work, sector_ani;
+            var count = 0;
+            var timer;
+            var change, mode = 0;
+            var ani_control;
+            
+            init();
+            animate(mode);
+            
+            $('#change').click(function(){
+                if(mode == 0) {
+                    mode = 1;
+                }else if (mode == 1){
+                    mode = 2;
+                }else if(mode == 2){
+                    mode = 0;
+                }
+                $(this).text(function(i, v){
+                    if(v == "Analog") return "Quartz";
+                    else if(v == "Quartz") return "Circle";
+                    else if(v == "Circle") return "Analog"
+                });
+                //mode = !mode;
+                if(mode == 0) {
+                    //init(mode);
+                    cancelAnimationFrame(ani_control);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }
+                else if(mode == 1) {
+                    //init();
+                    cancelAnimationFrame(ani_control);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }else if(mode == 2) {
+                    cancelAnimationFrame(ani_control);
+                    clearInterval(sector_ani);
+                    animate(mode);
+                }
+            });
+            
+            $('#toggle').click(function(){
+                turn = !turn;
+                if(turn) {
+                    $('#toggle').text('stop');
+                }
+                else if(!turn) {
+                    $('#toggle').text('turn');
+                }
+                //if(turn) timer.resume();
+                //else if(!turn) timer.pause();
+            });
+
+            function init () {
+                 
+                var width = window.innerWidth;
+                var height = window.innerHeight;
+                
+                renderer = new THREE.WebGLRenderer({
+                    alpha: true
+                });
+                document.body.appendChild (renderer.domElement);
+                renderer.setSize (width, height);
+
+                scene = new THREE.Scene();
+                /*var grid = new THREE.GridHelper(20,20, 0xaaaa00, 0xffffff);
+                scene.add (grid);
+                var axes = new THREE.AxesHelper (5);
+                scene.add (axes);*/
+
+                camera = new THREE.PerspectiveCamera (35, width/height, 1, 100);
+                camera.position.y = 0;
+                camera.position.z = 40;
+                camera.lookAt (new THREE.Vector3(0,0,0));
+
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+                window.addEventListener('resize', onWindowResize, false);
+                //real-time change width and height of window
+                ///////////////////////////////////////////////////////////////
+                var cubeGeometry = new THREE.BoxGeometry (3,0.2,0.2);
+                var cubeMaterial = new THREE.MeshBasicMaterial( { color: 0x000000, opacity: 0.5,transparent: true} );
+                cube = new THREE.Mesh (cubeGeometry, cubeMaterial);
+                scene.add (cube);
+                
+                var geometry = new THREE.CircleGeometry( 10, 50);
+                var material = new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5,transparent: true, side: THREE.DoubleSide} );
+                var circle = new THREE.Mesh( geometry, material );
+                scene.add( circle );
+                
+                var cubeMesh = [];
+                material_child = new THREE.MeshBasicMaterial({color: 0xff0000, opacity: 0.5,transparent: true});
+                //create child cube mesh
+                cubeMesh[0] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[1] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[2] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+                cubeMesh[3] = new THREE.Mesh(new THREE.BoxGeometry (1,0.2,0.2), material_child);
+
+                    //--> Set child cube world positions before the attachment to parentCube mesh
+                cubeMesh[0].position.set(10,0,0);
+                cubeMesh[1].position.set(-10,0,0);
+                cubeMesh[2].position.set(0,10,0);
+                cubeMesh[2].rotation.set(0, 0, Math.PI/2);
+                cubeMesh[3].position.set(0,-10,0);
+                cubeMesh[3].rotation.set(0, 0, -Math.PI/2);
+                
+                for (var i = 0; i < 4; i++)
+                    circle.add(cubeMesh[i]);
+                
+                var secondMesh = [];
+                material_secondchild = new THREE.MeshBasicMaterial({color: 0x0000ff, opacity: 0.5,transparent: true});
+                var ura_angle = 0;
+                for (var i = 0; i < 60; i++) {
+                    ura_angle += Math.PI*2/60;
+                    secondMesh[i] = new THREE.Mesh(new THREE.BoxGeometry (0.5,0.2,0.2), material_secondchild);
+                    secondMesh[i].position.set ( 8*Math.cos(-ura_angle), 8*Math.sin(-ura_angle), 5);
+                    secondMesh[i].rotation.z = -ura_angle;
+                }
+                for (var i = 0; i < 60; i++)
+                    circle.add(secondMesh[i]);
+                
+                var cir_clock = new THREE.CircleGeometry( 10, 50,  Math.PI/2, 0.0001);//(thetastart, thetalength)
+
+                var circleClock = new THREE.Mesh( cir_clock, material );
+                scene.add(circleClock);
+                
+                
+                /*timer = new RecurringTimer(function() {
+                document.getElementById("counter").innerHTML = ++count;
+            }, 1000);
+                timer.pause();*/
+            }
+
+            function onWindowResize() {
+                var width = window.innerWidth;
+                var height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+
+            function render() {
+                renderer.render(scene, camera);
+            }
+
+            function RecurringTimer(callback, delay) {
+                var timerId, start, remaining = delay;
+                this.pause = function() {
+                    window.clearTimeout(timerId);
+                    remaining -= new Date() - start;
+                };
+                var resume = function() {
+                    start = new Date();
+                    timerId = window.setTimeout(function() {
+                        remaining = delay;
+                        resume();
+                        callback();
+                    }, remaining);
+                };
+                this.resume = resume;
+                this.resume();
+            }
+            
+            function animate(mode) {
+                if(mode == 0){
+                    var second_around = Math.PI/30;
+                    var minute_around = second_around/60;
+                    if (turn) angle += minute_around;
+                    //cube.position.set (8*Math.cos(angle), 0.5, 8*Math.sin(angle));
+                    //cube.rotation.y = -angle;
+                    cube.position.set ( 8*Math.cos(-angle), 8*Math.sin(-angle), 0);
+                    cube.rotation.z = -angle;
+                    controls.update();
+                    ani_control = requestAnimationFrame(animate);
+                    render();
+                }
+                else if(mode == 1){
+                    sector_ani = window.setInterval(second_sector, 1000);
+                }
+                else if (mode == 2){
+                    var second_around = Math.PI/30;
+                    var minute_around = second_around/60;
+                    if (turn) angle += minute_around;
+                    //cube.position.set (8*Math.cos(angle), 0.5, 8*Math.sin(angle));
+                    //cube.rotation.y = -angle;
+                    //circleClock.position.set ( 8*Math.cos(-angle), 8*Math.sin(-angle), 0);
+                    circleClock.x = 8*Math.cos(-angle);
+                    circleClock.y = 8*Math.sin(-angle);
+                    circleClock.z = 0;
+                    circleClock.push(circleClock.x, circleClock.y, circleClock.z = 0);
+                    //cube.rotation.z = -angle;
+                    controls.update();
+                    ani_control = requestAnimationFrame(animate);
+                    render();
+                }
+            }
+            
+            function second_sector() {
+                var second_around = Math.PI*2/60;
+                if (turn) angle += second_around;
+                //cube.position.set (8*Math.cos(angle), 0.5, 8*Math.sin(angle));
+                //cube.rotation.y = -angle;
+                cube.position.set ( 8*Math.cos(-angle), 8*Math.sin(-angle), 0);
+                cube.rotation.z = -angle;
+                //cube.rotation.z = -angle;
+                controls.update();
+                //requestAnimationFrame(animate);
+                render();
+            }
+        </script>
+    </body>
+</html>
