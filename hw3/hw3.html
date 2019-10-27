@@ -52,7 +52,7 @@ var keyboard = new KeyboardState();
 var clock, useOne = true;
 var pos = new THREE.Vector3();
 var speed, angle = 0.01, vel;
-var theObjectAll;
+var theObjectAll, yellow_box;
 
 (function() {
     Math.clamp = function(val,min,max){
@@ -111,8 +111,9 @@ function init() {
     objLoader.load('oldcar.obj', function(object) {
         //var theObject =  unitize (object, 20);
         theObjectAll = unitize (object, 20);
+        yellow_box = new THREE.BoxHelper (theObjectAll);
         scene.add (theObjectAll);				
-        scene.add (new THREE.BoxHelper (theObjectAll));
+        scene.add (yellow_box);
         //////// MATERIAL ADJUSTMENT for porsche ///////////////
         // transparent window: double-side fix
         object.traverse (
@@ -161,10 +162,10 @@ function unitize (object, targetSize) {
 	var scaleSet = targetSize/objSize;
 				
 	var theObject =  new THREE.Object3D();
-	theObject.add (object);
+    theObject.add (object);
+    
 	object.scale.set (scaleSet, scaleSet, scaleSet);
 	object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
-	
 	return theObject;
 	
 	
@@ -194,10 +195,10 @@ function update(dt) {
         angle -= 0.01;
     }
     if (keyboard.pressed("W")) {
-        speed += 0.5;
+        speed -= 0.15;
     }
     if (keyboard.pressed("S")) {
-        speed -= 0.5;
+        speed += 0.15;
     }
     if (keyboard.pressed("space")) {
         speed = 0.01;
@@ -230,6 +231,7 @@ function animate() {
         //console.log(theObjectAll.children[0].rotation.y);
     }
     renderer.render(scene, camera1);
+    yellow_box.update();
 }
 
 </script>
