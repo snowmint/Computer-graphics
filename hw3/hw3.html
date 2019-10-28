@@ -97,7 +97,7 @@ init();
 animate();
 
 function loadCubemap() {
-    var path = "./yuhi/";
+    var path = "../hw2/yuhi/";
     var format = ".bmp";
     var urls = [
         path + 'posx' + format, path + 'negx' + format,
@@ -237,6 +237,8 @@ function unitize (object, targetSize) {
 function onWindowResize() {
     camera1.aspect = window.innerWidth / window.innerHeight;
     camera1.updateProjectionMatrix();
+    orthoCam.aspect = window.innerWidth / window.innerHeight;
+    orthoCam.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
@@ -288,7 +290,7 @@ function render() {
     camera1.aspect = WW / 2 / HH;
     camera1.updateProjectionMatrix();
     
-    //3rd person camera
+    //3rd person view camera
     if(theObjectAll) {
         let cameraPos = theObjectAll.children[0].localToWorld(new THREE.Vector3(50, 30, 0));
         //camera1.position.copy(cameraPos);
@@ -297,7 +299,7 @@ function render() {
     }
     
     ///////////////////////////////////////////////////////
-    //god's view camera
+    //god's eye view camera
     renderer.setViewport(WW/2, 0, WW/2, HH);
     if(theObjectAll) {
         orthoCam.position.set(theObjectAll.children[0].position.x, 80, theObjectAll.position.z);
