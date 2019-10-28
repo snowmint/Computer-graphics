@@ -39,21 +39,44 @@
 	    OBJLoader + MTLLoader<br>obj/mtl made bt Attila_Dobak
 	</div>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/107/three.min.js"></script>
-	<script src="http://threejs.org/build/three.min.js"></script>
-    <script src="http://threejs.org/examples/js/loaders/MTLLoader.js"></script>
-    <script src="http://threejs.org/examples/js/loaders/OBJLoader.js"></script>
+	<script src="https://threejs.org/build/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
 
 <script>
+class Obstacal {
+    constructor (name, x, y, z) {
+//        let maptexture = new THREE.TextureLoader().load( "./circle-icon.png");
+//        maptexture.repeat.set(1, 1);
+//        maptexture.wrapS = THREE.RepeatWrapping;
+//        maptexture.wrapT = THREE.RepeatWrapping;
+
+        this.mesh = new THREE.Mesh (new THREE.CylinderGeometry (8,8,10,20), 
+            new THREE.MeshPhongMaterial ({color:0xd0d0d0}));//, map:maptexture
+        this.pos = new THREE.Vector3(x,y,z);
+        this.mesh.position.copy (this.pos);
+        this.touch = false;
+        scene.add (this.mesh);
+        this.mesh.name = name;
+        console.log(name + " been create");
+    }
+    update(balls) {
+        //TODO
+    }
+}
 var camera1, camera2, scene, renderer;
 var controls, obj_car;
 var keyboard = new KeyboardState();
 var clock, useOne = true;
 var pos = new THREE.Vector3();
 var speed, angle = 0.01, vel;
-var theObjectAll, yellow_box;
+var theObjectAll, yellow_box, obstacals = [];
 
+function getRandom(min,max){
+    return Math.floor(Math.random()*(max-min+1))+min;
+};
 (function() {
     Math.clamp = function(val,min,max){
         return Math.min(Math.max(val,min),max);
@@ -138,6 +161,10 @@ function init() {
     speed = 0.0;
     angle = 0.0;
     
+    for(let i = 0; i < 5; i++) {
+        obstacals.push (new Obstacal ("target"+i, getRandom(-100,100), 5, getRandom(-100,100)));
+    }
+    
 }
 
 ////////////////////////////////////////
@@ -153,7 +180,6 @@ function unitize (object, targetSize) {
 	size.subVectors (box3.max, box3.min);
 	var center = new THREE.Vector3();
 	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
-	
 	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
 	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
 	
@@ -228,10 +254,10 @@ function animate() {
     if(theObjectAll) {
         theObjectAll.children[0].position.copy(pos);
         theObjectAll.children[0].rotation.y = angle;
-        //console.log(theObjectAll.children[0].rotation.y);
+        yellow_box.update();
     }
     renderer.render(scene, camera1);
-    yellow_box.update();
+    
 }
 
 </script>
