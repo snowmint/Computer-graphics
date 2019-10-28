@@ -74,17 +74,27 @@ class Obstacal {
     }
 }
 
-var camera1, camera2, scene, renderer;
+var camera1, camera2, scene, sceneHUD, renderer;
 var controls, obj_car;
 var keyboard = new KeyboardState();
 var clock, useOne = true;
 var pos = new THREE.Vector3();
 var speed, angle = 0.01, vel;
 var theObjectAll, yellow_box, obstacals = [];
-
 var tree_mesh;
 var orthoCam;
 
+function getRandom(min,max){
+    return Math.floor(Math.random()*(max-min+1))+min;
+};
+(function() {
+    Math.clamp = function(val,min,max){
+        return Math.min(Math.max(val,min),max);
+    }
+})();
+
+init();
+animate();
 
 function loadCubemap() {
     var path = "./yuhi/";
@@ -98,53 +108,32 @@ function loadCubemap() {
     loadercube.setCrossOrigin ('');
     var cubeMap = loadercube.load(urls);
     cubeMap.format = THREE.RGBFormat;
-    console.log(cubeMap);
+    //console.log(cubeMap.image);
     return cubeMap;
 }
-function getRandom(min,max){
-    return Math.floor(Math.random()*(max-min+1))+min;
-};
-(function() {
-    Math.clamp = function(val,min,max){
-        return Math.min(Math.max(val,min),max);
-    }
-})();
-
-init();
-animate();
-
 function init() {
     clock = new THREE.Clock();
-    clock_ball = new THREE.Clock();
-    scene = new THREE.Scene();
     
+    // scene
+    scene = new THREE.Scene();
     var cubeMap = loadCubemap();
     scene.background = cubeMap;
     
-    
-    container = document.createElement('div');
-    document.body.appendChild(container);
-
-    //camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 20000);
-    camera2 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1500);
-    camera2.position.set(0, 50, 100);
-    camera2.lookAt(new THREE.Vector3());
-
-    camera1 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
-    camera1.position.z = 500;  // important
-    camera1.position.y = 200;  // important
-    // scene
-
-    scene = new THREE.Scene();
     gridxz = new THREE.GridHelper (200, 20,'red','white');
     scene.add (gridxz);
     var ambient = new THREE.AmbientLight(0x444444);
     scene.add(ambient);
-
     var directionalLight = new THREE.DirectionalLight(0xffffff);
     directionalLight.position.set(0, 1, 1).normalize();
     scene.add(directionalLight);
+    
+    container = document.createElement('div');
+    document.body.appendChild(container);
 
+    camera1 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+    camera1.position.z = 50;  // important
+    camera1.position.y = 50;  // important
+    
     // model
     var onProgress = function(xhr) {
         if (xhr.lengthComputable) {
@@ -153,54 +142,50 @@ function init() {
         }
     };
     var onError = function(xhr) {};
-    //THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader());
-
     var mtlLoader = new THREE.MTLLoader();
     mtlLoader.setPath('model_by_Attila_Dobak/');
     mtlLoader.load('oldcar.mtl', function(materials) {
-    materials.preload();
-    var objLoader = new THREE.OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.setPath('model_by_Attila_Dobak/');
-    objLoader.load('oldcar.obj', function(object) {
-        //var theObject =  unitize (object, 20);
-        theObjectAll = unitize (object, 20);
-        yellow_box = new THREE.BoxHelper (theObjectAll);
-        scene.add (theObjectAll);				
-        scene.add (yellow_box);
-        //////// MATERIAL ADJUSTMENT for porsche ///////////////
-        // transparent window: double-side fix
-        object.traverse (
-            function(mesh) {
-				if (mesh instanceof THREE.Mesh) {
-				    mesh.material.side = THREE.DoubleSide;
-				}
-            });
+        materials.preload();
+        var objLoader = new THREE.OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.setPath('model_by_Attila_Dobak/');
+        objLoader.load('oldcar.obj', function(object) {
+            //var theObject =  unitize (object, 20);
+            theObjectAll = unitize (object, 20);
+            yellow_box = new THREE.BoxHelper (theObjectAll);
+            scene.add (theObjectAll);				
+            scene.add (yellow_box);
+            //////// MATERIAL ADJUSTMENT for porsche ///////////////
+            // transparent window: double-side fix
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                    }
+                }
+            );
         }, onProgress, onError);
+    });
 
-      });
-
+    //renderer
     renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
-
-	controls = new THREE.OrbitControls(camera1, renderer.domElement);
-	camera1.position.z = 200;
+    controls = new THREE.OrbitControls(camera1, renderer.domElement);
+    controls = new THREE.OrbitControls(camera1, renderer.domElement);
+    renderer.autoClear = false;
+    
+    orthoCam = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 100);
     window.addEventListener('resize', onWindowResize, false);
     speed = 0.0;
     angle = 0.0;
     
     for(let i = 0; i < 5; i++) {
-        obstacals.push (new Obstacal ("target"+i, getRandom(-100,100), 5, getRandom(-100,100)));
+        obstacals.push (new Obstacal ("Obstacal"+i, getRandom(-100,100), 5, getRandom(-100,100)));
     }
-    //////////////////////////////// --new
-    renderer.autoClear = false;
     
-    orthoCam = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 100);
-    
-    
-    ////////////////////
+    //billcoard tree texture
     let loader = new THREE.TextureLoader();
     loader.crossOrigin = '';
     let texture = loader.load("./Tree_Texture.png");
@@ -219,9 +204,7 @@ function init() {
 ////////////////////////////////////////
 // create an Object3D of the given object
 // so that it is centered at +Y axis
-// 
 function unitize (object, targetSize) {  
-	
 	// find bounding box of 'object'
 	var box3 = new THREE.Box3();
 	box3.setFromObject (object);
@@ -231,18 +214,15 @@ function unitize (object, targetSize) {
 	center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
 	console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
 	console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
-	
+    
 	// uniform scaling according to objSize
 	var objSize = findMax (size);
 	var scaleSet = targetSize/objSize;
-				
 	var theObject =  new THREE.Object3D();
     theObject.add (object);
-    
 	object.scale.set (scaleSet, scaleSet, scaleSet);
 	object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
 	return theObject;
-	
 	
 	// helper function
 	function findMax(v) {
@@ -252,7 +232,6 @@ function unitize (object, targetSize) {
 			return v.y > v.z ? v.y : v.z;
 		} 
 	}
-			
 }
 
 function onWindowResize() {
@@ -286,16 +265,6 @@ function update(dt) {
 }
 
 function animate() {
-    
-    let camera;
-    if(theObjectAll) {
-        camera2.position.copy(theObjectAll.localToWorld(new THREE.Vector3(-100, 50, 0)));
-        camera2.lookAt(theObjectAll.position);
-    }
-
-    if(useOne) camera = camera1;
-    else camera = camera2;
-
     var dt = clock.getDelta();
     update(dt);
     
@@ -307,10 +276,7 @@ function animate() {
         theObjectAll.children[0].rotation.y = angle;
         yellow_box.update();
     }
-    
     render();
-    //renderer.render(scene, camera1);
-    
 }
 function render() {
     renderer.clear();
@@ -322,16 +288,16 @@ function render() {
     camera1.aspect = WW / 2 / HH;
     camera1.updateProjectionMatrix();
     
-    //console.log(theObjectAll);
     //3rd person camera
     if(theObjectAll) {
         let cameraPos = theObjectAll.children[0].localToWorld(new THREE.Vector3(50, 30, 0));
-        camera1.position.copy(cameraPos);
-        camera1.lookAt(theObjectAll.children[0].position);
+        //camera1.position.copy(cameraPos);
+        //camera1.lookAt(theObjectAll.children[0].position);
         renderer.render(scene, camera1);
     }
     
     ///////////////////////////////////////////////////////
+    //god's view camera
     renderer.setViewport(WW/2, 0, WW/2, HH);
     if(theObjectAll) {
         orthoCam.position.set(theObjectAll.children[0].position.x, 80, theObjectAll.position.z);
@@ -339,7 +305,7 @@ function render() {
         orthoCam.lookAt(theObjectAll.children[0].position);
         renderer.render(scene, orthoCam);
     }
-    
+    controls.update();
 }
 </script>
 </body>
