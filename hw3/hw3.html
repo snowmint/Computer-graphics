@@ -58,6 +58,71 @@ function getDistance( fromX, fromY, toX, toY ) {
     var dY = Math.abs( fromY - toY );
     return Math.sqrt( ( dX * dX ) + ( dY * dY ) );
 }
+class Tree {
+    constructor (name, x, y, z){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.r = 2;
+        let loader = new THREE.TextureLoader();
+        loader.crossOrigin = '';
+        let texture = loader.load("./Tree_Texture.png");
+        var geometry = new THREE.PlaneGeometry(50,50);
+        var material = new THREE.MeshBasicMaterial({
+            map:texture,
+            alphaTest:0.5
+        });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.pos = new THREE.Vector3(x,y,z);
+        this.mesh.name = name;
+        this.mesh.position.copy(this.pos);
+        scene.add(this.mesh);
+    }
+    RectCircleColliding(rect) {
+        var rectCenterX = rect.position.x;
+        var rectCenterY = rect.position.z;
+        //console.log("rectCenter(x, y) (" + rectCenterX + ", " + rectCenterY + ")");
+        var rectX = rectCenterX - rect.w / 2;
+        var rectY = rectCenterY - rect.h / 2;
+        //console.log("rect(x, y) (" + rectX + ", " + rectY + ")");
+        var rectReferenceX = rectX;
+        var rectReferenceY = rectY;
+        //console.log("rectReference(x, y) (" + rectReferenceX + ", " + rectReferenceY + ")");
+        // Rotate circle's center point back
+        var unrotatedCircleX = Math.cos( rect.rotation.y ) * ( this.x - rectCenterX ) - Math.sin( rect.rotation.y ) * ( this.z - rectCenterY ) + rectCenterX;
+        var unrotatedCircleY = Math.sin( rect.rotation.y ) * ( this.x - rectCenterX ) + Math.cos( rect.rotation.y ) * ( this.z - rectCenterY ) + rectCenterY;
+        // Closest point in the rectangle to the center of circle rotated backwards(unrotated)
+        var closestX, closestY;
+        //console.log("unrotatedCircle : (" + unrotatedCircleX + ", " + unrotatedCircleY + ")");
+        // Find the unrotated closest x point from center of unrotated circle
+        if ( unrotatedCircleX < rectReferenceX ) {
+            closestX = rectReferenceX;
+        } else if ( unrotatedCircleX > rectReferenceX + rect.w ) {
+            closestX = rectReferenceX + rect.w;
+        } else {
+            closestX = unrotatedCircleX;
+        }
+        // Find the unrotated closest y point from center of unrotated circle
+        if ( unrotatedCircleY < rectReferenceY ) {
+            closestY = rectReferenceY;
+        } else if ( unrotatedCircleY > rectReferenceY + rect.h ) {
+            closestY = rectReferenceY + rect.h;
+        } else {
+            closestY = unrotatedCircleY;
+        }
+        // Determine collision
+        var collision = false;
+        var distance = getDistance( unrotatedCircleX, unrotatedCircleY, closestX, closestY );
+        if ( distance < this.r ) {
+            collision = true;
+        }
+        else {
+            collision = false;
+        }
+        //console.log("distance : " + distance);
+        return collision;
+    }
+}
 class Obstacal {
     constructor (name, x, y, z, r) {
 //        let maptexture = new THREE.TextureLoader().load( "./circle-icon.png");
@@ -120,15 +185,8 @@ class Obstacal {
         else {
             collision = false;
         }
-        console.log("distance : " + distance);
+        //console.log("distance : " + distance);
         return collision;
-        /*if ( distance < this.r ) {
-            collision = true;
-        }
-        else {
-            collision = false;
-        }
-        return collision;*/
     }
 }
 var camera1, camera2, scene, sceneHUD, renderer;
@@ -137,7 +195,7 @@ var keyboard = new KeyboardState();
 var clock, useOne = true;
 var pos = new THREE.Vector3();
 var speed, angle = 0.01, vel;
-var theObjectAll, yellow_box, obstacals = [];
+var theObjectAll, yellow_box, obstacals = [], Trees = [];
 var tree_mesh;
 var orthoCam;
 
@@ -224,9 +282,9 @@ function init() {
         objLoader.load('oldcar.obj', function(object) {
             //var theObject =  unitize (object, 20);
             theObjectAll = unitize (object, 20);
-            yellow_box = new THREE.BoxHelper (theObjectAll);
+            //yellow_box = new THREE.BoxHelper (theObjectAll);
             scene.add (theObjectAll);				
-            scene.add (yellow_box);
+            //scene.add (yellow_box);
             //////// MATERIAL ADJUSTMENT for porsche ///////////////
             // transparent window: double-side fix
             object.traverse (
@@ -257,20 +315,11 @@ function init() {
         obstacals.push (new Obstacal ("Obstacal"+i, getRandom(-100,100), 5, getRandom(-100,100), getRandom(2,10)));
     }
     
-    //billcoard tree texture
-    let loader = new THREE.TextureLoader();
-    loader.crossOrigin = '';
-    let texture = loader.load("./Tree_Texture.png");
-    var geometry = new THREE.PlaneGeometry(50,50);
-    var material = new THREE.MeshBasicMaterial({
-        map:texture,
-        alphaTest:0.5
-    });
-    tree_mesh = new THREE.Mesh(geometry, material);
-    tree_mesh.position.y = 25;
-    tree_mesh.position.x = 60;
-    tree_mesh.position.z = 60;
-    scene.add(tree_mesh);
+    for(let i = 0; i < 5; i++) {
+        Trees.push (new Tree ("Tree"+i, getRandom(-100,100), 25, getRandom(-100,100)));
+        
+    }
+    scene.add(Trees);
 }
 
 ////////////////////////////////////////
@@ -354,7 +403,7 @@ function animate() {
         theObjectAll.children[0].position.copy(pos);
         theObjectAll.children[0].position.y = 4.4;
         theObjectAll.children[0].rotation.y = angle;
-        yellow_box.update();
+        //yellow_box.update();
     }
     render();
     var coli = false;
@@ -362,7 +411,14 @@ function animate() {
         for(let i = 0; i < 5; i++) {
             coli = obstacals[i].RectCircleColliding(theObjectAll.children[0]);
             if(coli == true) {
-                console.log("colision" + i);
+                console.log("colision cylinder" + i);
+                speed = 0.1;
+            }
+        }
+        for(let i = 0; i < 5; i++) {
+            coli = Trees[i].RectCircleColliding(theObjectAll.children[0]);
+            if(coli == true) {
+                console.log("colision tree" + i);
                 speed = 0.1;
             }
         }
@@ -371,8 +427,9 @@ function animate() {
 }
 function render() {
     renderer.clear();
-    tree_mesh.lookAt(new THREE.Vector3(camera1.position.x, 50, camera1.position.z));
-    
+    for(let i = 0; i < 5; i++) {
+        Trees[i].mesh.lookAt(new THREE.Vector3(camera1.position.x, 50, camera1.position.z));
+    }
     let WW = window.innerWidth;
     let HH = window.innerHeight;
     renderer.setViewport(0, 0, WW/2, HH);
@@ -399,7 +456,6 @@ function render() {
         renderer.render(scene, orthoCam);
     }
     controls.update();
-    
 }
 </script>
 </body>
