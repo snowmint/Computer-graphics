@@ -53,14 +53,23 @@
     <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
 
 <script>
+function getDistance( fromX, fromY, toX, toY ) {
+    var dX = Math.abs( fromX - toX );
+    var dY = Math.abs( fromY - toY );
+    return Math.sqrt( ( dX * dX ) + ( dY * dY ) );
+}
 class Obstacal {
-    constructor (name, x, y, z) {
+    constructor (name, x, y, z, r) {
 //        let maptexture = new THREE.TextureLoader().load( "./circle-icon.png");
 //        maptexture.repeat.set(1, 1);
 //        maptexture.wrapS = THREE.RepeatWrapping;
 //        maptexture.wrapT = THREE.RepeatWrapping;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.r = r;
 
-        this.mesh = new THREE.Mesh (new THREE.CylinderGeometry (8,8,10,20), 
+        this.mesh = new THREE.Mesh (new THREE.CylinderGeometry (this.r,this.r,10,20), 
             new THREE.MeshPhongMaterial ({color:0xd0d0d0}));//, map:maptexture
         this.pos = new THREE.Vector3(x,y,z);
         this.mesh.position.copy (this.pos);
@@ -69,13 +78,61 @@ class Obstacal {
         this.mesh.name = name;
         console.log(name + " been create");
     }
-    update(balls) {
-        //TODO
+    
+    RectCircleColliding(rect) {
+        var rectCenterX = rect.position.x;
+        var rectCenterY = rect.position.z;
+        //console.log("rectCenter(x, y) (" + rectCenterX + ", " + rectCenterY + ")");
+        var rectX = rectCenterX - rect.w / 2;
+        var rectY = rectCenterY - rect.h / 2;
+        //console.log("rect(x, y) (" + rectX + ", " + rectY + ")");
+        var rectReferenceX = rectX;
+        var rectReferenceY = rectY;
+        //console.log("rectReference(x, y) (" + rectReferenceX + ", " + rectReferenceY + ")");
+        // Rotate circle's center point back
+        var unrotatedCircleX = Math.cos( rect.rotation.y ) * ( this.x - rectCenterX ) - Math.sin( rect.rotation.y ) * ( this.z - rectCenterY ) + rectCenterX;
+        var unrotatedCircleY = Math.sin( rect.rotation.y ) * ( this.x - rectCenterX ) + Math.cos( rect.rotation.y ) * ( this.z - rectCenterY ) + rectCenterY;
+        // Closest point in the rectangle to the center of circle rotated backwards(unrotated)
+        var closestX, closestY;
+        //console.log("unrotatedCircle : (" + unrotatedCircleX + ", " + unrotatedCircleY + ")");
+        // Find the unrotated closest x point from center of unrotated circle
+        if ( unrotatedCircleX < rectReferenceX ) {
+            closestX = rectReferenceX;
+        } else if ( unrotatedCircleX > rectReferenceX + rect.w ) {
+            closestX = rectReferenceX + rect.w;
+        } else {
+            closestX = unrotatedCircleX;
+        }
+        // Find the unrotated closest y point from center of unrotated circle
+        if ( unrotatedCircleY < rectReferenceY ) {
+            closestY = rectReferenceY;
+        } else if ( unrotatedCircleY > rectReferenceY + rect.h ) {
+            closestY = rectReferenceY + rect.h;
+        } else {
+            closestY = unrotatedCircleY;
+        }
+        // Determine collision
+        var collision = false;
+        var distance = getDistance( unrotatedCircleX, unrotatedCircleY, closestX, closestY );
+        if ( distance < this.r ) {
+            collision = true;
+        }
+        else {
+            collision = false;
+        }
+        console.log("distance : " + distance);
+        return collision;
+        /*if ( distance < this.r ) {
+            collision = true;
+        }
+        else {
+            collision = false;
+        }
+        return collision;*/
     }
 }
-
 var camera1, camera2, scene, sceneHUD, renderer;
-var controls, obj_car;
+var controls, obj_car, rectangle;
 var keyboard = new KeyboardState();
 var clock, useOne = true;
 var pos = new THREE.Vector3();
@@ -100,9 +157,9 @@ function loadCubemap() {
     var path = "./yuhi/";
     var format = ".bmp";
     var urls = [
-        path + 'posx' + format, path + 'negx' + format,
-        path + 'posy' + format, path + 'negy' + format,
-        path + 'posz' + format, path + 'negz' + format
+            path + 'posx' + format, path + 'negx' + format,
+            path + 'posy' + format, path + 'negy' + format,
+            path + 'posz' + format, path + 'negz' + format
         ];
     var loadercube = new THREE.CubeTextureLoader();
     loadercube.setCrossOrigin ('');
@@ -113,11 +170,25 @@ function loadCubemap() {
 }
 function init() {
     clock = new THREE.Clock();
-    
+
     // scene
     scene = new THREE.Scene();
     var cubeMap = loadCubemap();
     scene.background = cubeMap;
+    
+    ////////////
+//    let planeGeo = new THREE.PlaneGeometry(10000,10000);
+//    planeGeo.faceVertexUvs[1] = planeGeo.faceVertexUvs[0];
+//    let planeMat = new THREE.MeshBasicMaterial({color:0xffffff, side:THREE.DoubleSide});
+//    let plane = new THREE.Mesh(planeGeo,planeMat);
+//    plane.rotation.x = -Math.PI / 2;
+//    plane.position.y = 0;
+//    scene.add(plane);
+//    var geometry = new THREE.BoxGeometry( 20, 20, 12 );
+//    var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+//    var cube = new THREE.Mesh( geometry, material );
+//    scene.add( cube );
+    ////////////
     
     gridxz = new THREE.GridHelper (200, 20,'red','white');
     scene.add (gridxz);
@@ -131,8 +202,9 @@ function init() {
     document.body.appendChild(container);
 
     camera1 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
-    camera1.position.z = 50;  // important
-    camera1.position.y = 50;  // important
+    camera1.position.x = 150;
+    camera1.position.z = 80;  // important
+    camera1.position.y = 40;  // important
     
     // model
     var onProgress = function(xhr) {
@@ -182,7 +254,7 @@ function init() {
     angle = 0.0;
     
     for(let i = 0; i < 5; i++) {
-        obstacals.push (new Obstacal ("Obstacal"+i, getRandom(-100,100), 5, getRandom(-100,100)));
+        obstacals.push (new Obstacal ("Obstacal"+i, getRandom(-100,100), 5, getRandom(-100,100), getRandom(2,10)));
     }
     
     //billcoard tree texture
@@ -219,6 +291,12 @@ function unitize (object, targetSize) {
 	var objSize = findMax (size);
 	var scaleSet = targetSize/objSize;
 	var theObject =  new THREE.Object3D();
+    object.maxX = center.x + 6;
+    object.maxY = center.z + 10;
+    object.minX = center.x - 6;
+    object.minY = center.z - 10;
+    object.w = 20;
+    object.h = 12;
     theObject.add (object);
 	object.scale.set (scaleSet, scaleSet, scaleSet);
 	object.position.set (-center.x*scaleSet, -center.y*scaleSet + size.y/2*scaleSet, -center.z*scaleSet);
@@ -274,11 +352,22 @@ function animate() {
     requestAnimationFrame(animate);
     if(theObjectAll) {
         theObjectAll.children[0].position.copy(pos);
-        theObjectAll.children[0].position.y = 5;
+        theObjectAll.children[0].position.y = 4.4;
         theObjectAll.children[0].rotation.y = angle;
         yellow_box.update();
     }
     render();
+    var coli = false;
+    if(theObjectAll) {
+        for(let i = 0; i < 5; i++) {
+            coli = obstacals[i].RectCircleColliding(theObjectAll.children[0]);
+            if(coli == true) {
+                console.log("colision" + i);
+                speed = 0.1;
+            }
+        }
+    }
+    
 }
 function render() {
     renderer.clear();
@@ -296,6 +385,8 @@ function render() {
         //camera1.position.copy(cameraPos);
         //camera1.lookAt(theObjectAll.children[0].position);
         renderer.render(scene, camera1);
+        //console.log(theObjectAll.children[0].w);
+        //console.log(theObjectAll.children[0].h);
     }
     
     ///////////////////////////////////////////////////////
@@ -308,8 +399,66 @@ function render() {
         renderer.render(scene, orthoCam);
     }
     controls.update();
+    
 }
 </script>
 </body>
 
 </html>
+
+
+<!--
+    
+//    RectCircleColliding(rect) {
+//        let Rad2 = this.r * this.r;
+//        /* Translate coordinates, placing C at the origin. */
+//        R->max.x -= C->x;  R->max.y -= C->y;
+//        R->min.x -= C->x;  R->min.y -= C->y;
+//        
+//
+//        if (R->max.x < 0) 			/* R to left of circle center */
+//            if (R->max.y < 0) 		/* R in lower left corner */
+//                    return ((R->max.x * R->max.x + R->max.y * R->max.y) < Rad2);
+//            else if (R->min.y > 0) 	/* R in upper left corner */
+//                    return ((R->max.x * R->max.x + R->min.y * R->min.y) < Rad2);
+//            else 					/* R due West of circle */
+//                    return(ABS(R->max.x) < Rad);
+//            else if (R->min.x > 0)  	/* R to right of circle center */
+//                if (R->max.y < 0) 	/* R in lower right corner */
+//                        return ((R->min.x * R->min.x + R->max.y * R->max.y) < Rad2);
+//            else if (R->min.y > 0)  	/* R in upper right corner */
+//                    return ((R->min.x * R->min.x + R->min.y * R->min.y) < Rad2);
+//            else 				/* R due East of circle */
+//                    return (R->min.x < Rad);
+//            else				/* R on circle vertical centerline */
+//                if (R->max.y < 0) 	/* R due South of circle */
+//                    return (ABS(R->max.y) < Rad);
+//            else if (R->min.y > 0)  	/* R due North of circle */
+//                    return (R->min.y < Rad);
+//            else 				/* R contains circle centerpoint */
+//                    return(TRUE);
+//    }
+//    
+//function RectCircleColliding(circle, rect) {
+//    var distX = Math.abs(circle.x - rect.x - rect.w / 2);
+//    var distY = Math.abs(circle.y - rect.y - rect.h / 2);
+//
+//    if (distX > (rect.w / 2 + circle.r)) {
+//        return false;
+//    }
+//    if (distY > (rect.h / 2 + circle.r)) {
+//        return false;
+//    }
+//
+//    if (distX <= (rect.w / 2)) {
+//        return true;
+//    }
+//    if (distY <= (rect.h / 2)) {
+//        return true;
+//    }
+//
+//    var dx = distX - rect.w / 2;
+//    var dy = distY - rect.h / 2;
+//    return (dx * dx + dy * dy <= (circle.r * circle.r));
+//}
+-->
