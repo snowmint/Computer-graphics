@@ -63,7 +63,6 @@
 
     <script>
         var camera, scene, renderer, controls;
-
         var raycaster, desk_light;
         var mouse = new THREE.Vector2();
         var pickables = [];
@@ -72,8 +71,63 @@
         var lit = true, roomlit = true;
         var ambient, directionalLight;
         var materialArray;
+        var theObjectAll;
+        var sphere;
+        
+        var walls, wall_entrys;
+        var desk_things, desk_entrys;
+        
+        class Ball_light {
+            constructor() {
+                this.pos = new THREE.Vector3(-20, 40, -10);
+                this.mesh = new THREE.Object3D();
+                this.light = new THREE.PointLight();
+            }
+        }
+        
+        class Wall {
+            constructor() {
+                this.pos = new THREE.Vector3();
+            }
+        }
+        class Desk {
+            constructor() {
+                this.pos = new THREE.Vector3();
+            }
+        }
+        
         init();
         animate();
+        function unitize (object, targetSize) {  
+            // find bounding box of 'object'
+            var box3 = new THREE.Box3();
+            box3.setFromObject (object);
+            var size = new THREE.Vector3();
+            size.subVectors (box3.max, box3.min);
+            var center = new THREE.Vector3();
+            center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+            console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+            console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+
+            // uniform scaling according to objSize
+            var objSize = findMax (size);
+            var scaleSet = targetSize/objSize;
+            var theObject =  new THREE.Object3D();
+
+            theObject.add (object);
+            object.scale.set (scaleSet, scaleSet, scaleSet);
+            object.position.set (-center.x*scaleSet-22, -center.y*scaleSet + size.y/2*scaleSet+21, -center.z*scaleSet-10);
+            return theObject;
+
+            // helper function
+            function findMax(v) {
+                if (v.x > v.y) {
+                    return v.x > v.z ? v.x : v.z;
+                } else { // v.y > v.x
+                    return v.y > v.z ? v.y : v.z;
+                } 
+            }
+        }
         
         function buildModel(){
             let geometry = new THREE.Geometry();
@@ -137,21 +191,18 @@
             directionalLight.position.set(0, 1, 1).normalize();
             scene.add(directionalLight);
 
-            /////////////////////////////////////////////////////////////////////
-            desk_light = new THREE.PointLight(0xffffff, 1, 100); //,100
-            desk_light.position.set(50, 50, 50);
-            scene.add(desk_light);
+            
             /////////////////////////////////////////////////////////////////////
             var desklampswitch = new THREE.Group();
             scene.add(desklampswitch);
             
             desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
             desklamp_switch.name = 'desklamp_switch'
-            desklamp_switch.position.set(-50, 1, 0)
+            desklamp_switch.position.set(-10, 22, 0) //y = 1
             
             desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
             desklamp_switch_core.name = 'desklamp_switch_core'
-            desklamp_switch_core.position.set(-50, 2, 0)
+            desklamp_switch_core.position.set(-10, 23, 0) // y = 2
             desklampswitch.add(desklamp_switch, desklamp_switch_core);
 
             var roomlightswitch = new THREE.Group();
@@ -159,11 +210,11 @@
             
             roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
             roomlight_switch.name = 'roomlight_switch'
-            roomlight_switch.position.set(50, 1, 0)
+            roomlight_switch.position.set(10, 22, 0)
             
             roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
             roomlight_switch_core.name = 'roomlight_switch_core'
-            roomlight_switch_core.position.set(50, 2, 0)
+            roomlight_switch_core.position.set(10, 23, 0)
             roomlightswitch.add(roomlight_switch, roomlight_switch_core);
             
             pickables = [desklamp_switch_core, roomlight_switch_core];
@@ -172,6 +223,105 @@
             document.addEventListener('mousedown', onDocumentMouseDown, false);
             
             scene.add(buildModel());
+            
+            //////////////////////
+            // model
+            var onProgress = function(xhr) {
+                if (xhr.lengthComputable) {
+                  var percentComplete = xhr.loaded / xhr.total * 100;
+                  console.log(Math.round(percentComplete, 2) + '% downloaded');
+                }
+            };
+            var onError = function(xhr) {};
+            var mtlLoader = new THREE.MTLLoader();
+            mtlLoader.setPath('desk_lamp/');
+            mtlLoader.load('Desk_lamp.mtl', function(materials) {
+                materials.preload();
+                var objLoader = new THREE.OBJLoader();
+                objLoader.setMaterials(materials);
+                objLoader.setPath('desk_lamp/');
+                objLoader.load('Desk_lamp.obj', function(object) {
+                    //var theObject =  unitize (object, 20);
+                    theObjectAll = unitize (object, 20);
+                    //yellow_box = new THREE.BoxHelper (theObjectAll);
+                    scene.add (theObjectAll);				
+                    //scene.add (yellow_box);
+                    //////// MATERIAL ADJUSTMENT for porsche ///////////////
+                    // transparent window: double-side fix
+                    object.traverse (
+                        function(mesh) {
+                            if (mesh instanceof THREE.Mesh) {
+                                mesh.material.side = THREE.DoubleSide;
+                            }
+                        }
+                    );
+                }, onProgress, onError);
+            });
+            
+            //
+            //walls
+            var cubeGeom = new THREE.BoxGeometry(206, 50, 6);
+            var wallMeterial = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 1,
+                side: THREE.DoubleSide,
+            });
+            let wall_entry = new THREE.Mesh(cubeGeom, wallMeterial);
+            walls = [];
+            wall_entrys = []
+            let PosOfx = [0, 100, 0, -100],
+            PosOfz = [100, 0, -100, 0],
+            Rotation = [0, 1, 0, 1];
+
+            for (let i = 2; i < 4; i++) {
+                let wall = new Wall();
+                walls.push(wall);
+                let thisMesh = wall_entry.clone();
+                if (Rotation[i] == 1) thisMesh.rotation.y = -Math.PI / 2;
+                thisMesh.position.set(PosOfx[i], 23.5, PosOfz[i], Rotation[i]);
+                wall_entrys.push(thisMesh);
+                scene.add(thisMesh)
+            }
+            
+            //Desk
+            var cubeGeom = new THREE.BoxGeometry(70, 30, 2);
+            var wallMeterial = new THREE.MeshPhongMaterial({
+                color: 0xce945b,
+                transparent: true,
+                opacity: 1,
+                side: THREE.DoubleSide,
+            });
+            let desk_entry = new THREE.Mesh(cubeGeom, wallMeterial);
+            desk_things = []
+            desk_entrys = []
+            PosOfx = [0, 0, 0, 0],
+            PosOfz = [0, 0, -100, 0],
+            Rotation = [0, 1, 0, 1];
+
+            for (let i = 0; i < 1; i++) {
+                let desk = new Desk();
+                desk_things.push(desk);
+                let thisMesh = desk_entry.clone();
+                if (i == 0) thisMesh.rotation.x = -Math.PI / 2;
+                thisMesh.position.set(PosOfx[i], 20, PosOfz[i], Rotation[i]);
+                desk_entrys.push(thisMesh);
+                scene.add(thisMesh)
+            }
+            
+            //
+            var sphere_geometry = new THREE.SphereGeometry( 2, 32, 32 );
+            var sphere_material = new THREE.MeshPhongMaterial( {color: 0xffff00} );
+            sphere = new THREE.Mesh( sphere_geometry, sphere_material );
+            sphere.position.set(-19, 38, -10);
+            scene.add( sphere );
+            
+            //light
+            desk_light = new THREE.PointLight(0xffffff, 1, 100); //,100
+            desk_light.position.set(-19, 38, -10);
+            scene.add(desk_light);
+
+            /////////////////////////////////////////////////
         }
 
         function onDocumentMouseDown(event) {
@@ -196,10 +346,12 @@
                 console.log("desk ligh : " + lit);
                 if(lit && intersects[0].object.name == "desklamp_switch_core") {
                     desklamp_switch_core.material.emissive = new THREE.Color('black');
+                    sphere.material.emissive = new THREE.Color('yellow');
                     desk_light.intensity = 1;
                     lit = !lit; //toggle
                 }else if (!lit && intersects[0].object.name == "desklamp_switch_core"){
                     desklamp_switch_core.material.emissive = new THREE.Color('red');
+                    sphere.material.emissive = new THREE.Color('black');
                     desk_light.intensity = 0;
                     lit = !lit; //toggle
                 }
