@@ -168,10 +168,14 @@
         }
 
         function init() {
+            lit = true;
+            roomlit = true;
             scene = new THREE.Scene();
 
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.z = 500;
+            camera.position.z = 100;
+            camera.position.y = 50;
+            camera.position.x = 100;
 
             var gridXZ = new THREE.GridHelper(240, 24, 'red', 'white');
             scene.add(gridXZ);
@@ -313,6 +317,7 @@
             var sphere_geometry = new THREE.SphereGeometry( 2, 32, 32 );
             var sphere_material = new THREE.MeshPhongMaterial( {color: 0xffff00} );
             sphere = new THREE.Mesh( sphere_geometry, sphere_material );
+            sphere.material.emissive = new THREE.Color('yellow');
             sphere.position.set(-19, 38, -10);
             scene.add( sphere );
             
@@ -344,12 +349,13 @@
             if (intersects.length > 0) {
                 console.log(intersects[0].object.name);
                 console.log("desk ligh : " + lit);
-                if(lit && intersects[0].object.name == "desklamp_switch_core") {
+                //console.log(intersects[0].object.name == "desklamp_switch_core");
+                if(!lit && intersects[0].object.name == "desklamp_switch_core") {
                     desklamp_switch_core.material.emissive = new THREE.Color('black');
                     sphere.material.emissive = new THREE.Color('yellow');
                     desk_light.intensity = 1;
                     lit = !lit; //toggle
-                }else if (!lit && intersects[0].object.name == "desklamp_switch_core"){
+                }else if (lit && intersects[0].object.name == "desklamp_switch_core"){
                     desklamp_switch_core.material.emissive = new THREE.Color('red');
                     sphere.material.emissive = new THREE.Color('black');
                     desk_light.intensity = 0;
@@ -358,11 +364,11 @@
                 
                 //console.log(intersects[0].object.name);
                 console.log("room ligh : " + roomlit);
-                if(roomlit && intersects[0].object.name == "roomlight_switch_core") {
+                if(!roomlit && intersects[0].object.name == "roomlight_switch_core") {
                     roomlight_switch_core.material.emissive = new THREE.Color('black');
                     directionalLight.intensity = 1;
                     roomlit = !roomlit; //toggle
-                }else if (!roomlit && intersects[0].object.name == "roomlight_switch_core"){
+                }else if (roomlit && intersects[0].object.name == "roomlight_switch_core"){
                     roomlight_switch_core.material.emissive = new THREE.Color('blue');
                     directionalLight.intensity = 0;
                     roomlit = !roomlit; //toggle
