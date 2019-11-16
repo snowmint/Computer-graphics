@@ -131,39 +131,158 @@
         
         function buildModel(){
             let geometry = new THREE.Geometry();
-            let sq11 = Math.sqrt(11);
-            
-            geometry.vertices.push(new THREE.Vector3(-5, 0, 5));
-            geometry.vertices.push(new THREE.Vector3(5, 0, 5));
-            geometry.vertices.push(new THREE.Vector3(5, 12, 5));
-            geometry.vertices.push(new THREE.Vector3(5, 12 + sq11, 0));
-            geometry.vertices.push(new THREE.Vector3(-5, 0, 5));
-            geometry.vertices.push(new THREE.Vector3(-5, 12, 5));
+            let pos_y = 21, pos_x = 25, pos_z = -10;
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 0+pos_y, 2+pos_z));//0
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 0+pos_y, 2+pos_z));//1
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 9+pos_y, 2+pos_z));//2
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 11+pos_y, 0+pos_z));//3
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 11+pos_y, 0+pos_z));//4
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 9+pos_y, 2+pos_z));//5
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 0+pos_y, -2+pos_z));//6
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 9+pos_y, -2+pos_z));//7
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 9+pos_y, -2+pos_z));//8
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 0+pos_y, -2+pos_z));//9
+            geometry.vertices.push(new THREE.Vector3(2+pos_x, 12+pos_y, 0+pos_z));//10
+            geometry.vertices.push(new THREE.Vector3(-2+pos_x, 12+pos_y, 0+pos_z));//11
             
             let face;
             face = new THREE.Face3(0, 1, 2), face.materialIndex = 0;
             geometry.faces.push(face);
             face = new THREE.Face3(0, 2, 5), face.materialIndex = 0;
+            geometry.faces.push(face);//front
+            
+            face = new THREE.Face3(2, 3, 4), face.materialIndex = 1;
             geometry.faces.push(face);
-            face = new THREE.Face3(2, 3, 5), face.materialIndex = 0;
+            face = new THREE.Face3(2, 4, 5), face.materialIndex = 1;
+            geometry.faces.push(face);//front-up
+            
+            face = new THREE.Face3(1, 6, 2), face.materialIndex = 2;
             geometry.faces.push(face);
-            face = new THREE.Face3(3, 4, 5), face.materialIndex = 0;
+            face = new THREE.Face3(6, 7, 2), face.materialIndex = 2;
+            geometry.faces.push(face);//right
+            
+            face = new THREE.Face3(2, 7, 3), face.materialIndex = 3;
+            geometry.faces.push(face);//right-triangle
+            
+            face = new THREE.Face3(6, 7, 8), face.materialIndex = 4;
             geometry.faces.push(face);
+            face = new THREE.Face3(6, 8, 9), face.materialIndex = 4;
+            geometry.faces.push(face);//back
+            
+            face = new THREE.Face3(7, 3, 8), face.materialIndex = 5;
+            geometry.faces.push(face);
+            face = new THREE.Face3(3, 4, 8), face.materialIndex = 5;
+            geometry.faces.push(face);//back-up
+            
+            face = new THREE.Face3(8, 5, 9), face.materialIndex = 6;
+            geometry.faces.push(face);
+            face = new THREE.Face3(5, 0, 9), face.materialIndex = 6;
+            geometry.faces.push(face);//left
+            
+            face = new THREE.Face3(8, 4, 5), face.materialIndex = 7;
+            geometry.faces.push(face);//left-triangle
+            
+            face = new THREE.Face3(3, 10, 11), face.materialIndex = 8;
+            geometry.faces.push(face);
+            face = new THREE.Face3(11, 4, 3), face.materialIndex = 8;
+            geometry.faces.push(face);//front-top
+            
+//            face = new THREE.Face3(3, 11, 10), face.materialIndex = 9;
+//            geometry.faces.push(face);
+//            face = new THREE.Face3(4, 11, 3), face.materialIndex = 9;
+//            geometry.faces.push(face);//back-top
+            
+            face = new THREE.Face3(1, 6, 9), face.materialIndex = 9;
+            geometry.faces.push(face);
+            face = new THREE.Face3(0, 1, 9), face.materialIndex = 9;
+            geometry.faces.push(face);//bottom
             
             //material position
-            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0)], new THREE.Vector2(1, 1));
-            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1)], new THREE.Vector2(0, 1));
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+            //front
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+            //front-up
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+            //right
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)]);
+            //right-up
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+            //back
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 0)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 1), new THREE.Vector2(0, 1), new THREE.Vector2(0, 0)]);
+            //back-up
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+            //left
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)]);
+            //left-up
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+            //front-top
+            
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+//            //backtop
+            
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+            //bottom
             
             geometry.computeFaceNormals();
             geometry.computeVertexNormals();
             
             let loader = new THREE.TextureLoader();
-            loader.crossOrigin = '';
-            let texture = loader.load('./tree_watercolor.jpg');//url
+            loader.crossOrigin = ('');
+            let texture_front = loader.load('./tea_front.png');
+            let texture_right = loader.load('./tea_right.png');
+            let texture_left = loader.load('./tea_left.png');
+            let texture_back = loader.load('./tea_back.png');
+            let texture_frontup = loader.load('./tea_frontup.png');
+            let texture_rightup = loader.load('./tea_rightup.png');
+            let texture_leftup = loader.load('./tea_leftup.png');
+            let texture_backup = loader.load('./tea_backup.png');
+            let texture_fronttop = loader.load('./tea_top_front.png');
+            let texture_backtop = loader.load('./tea_top_back.png');
+            
+            texture_frontup.wrapS = THREE.RepeatWrapping;
+            texture_frontup.repeat.x = - 1;
+            
+            texture_backup.wrapS = THREE.RepeatWrapping;
+            texture_backup.repeat.x = - 1;
+            
+            texture_right.wrapS = THREE.RepeatWrapping;
+            texture_right.repeat.x = - 1;
+            
+            texture_left.wrapT = THREE.RepeatWrapping;
+            texture_left.repeat.y = - 1;
+            
             
             materialArray = [];
-            materialArray.push(new THREE.MeshPhongMaterial({map:texture, side: THREE.DoubleSide}),
-            new THREE.MeshPhongMaterial({color:'cyan'}));
+            materialArray.push(
+                new THREE.MeshPhongMaterial({map:texture_front, side:THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_frontup, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_right, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_rightup, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_back, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_backup, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_left, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_leftup, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({map:texture_fronttop, side: THREE.DoubleSide}),
+                //new THREE.MeshPhongMaterial({map:texture_fronttop, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({color:'white', side: THREE.DoubleSide})
+            );
             return new THREE.Mesh(geometry, materialArray);
         }
 
@@ -200,25 +319,25 @@
             var desklampswitch = new THREE.Group();
             scene.add(desklampswitch);
             
-            desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
+            desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
             desklamp_switch.name = 'desklamp_switch'
-            desklamp_switch.position.set(-10, 22, 0) //y = 1
+            desklamp_switch.position.set(-5, 21, -10) //y = 1
             
-            desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
+            desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
             desklamp_switch_core.name = 'desklamp_switch_core'
-            desklamp_switch_core.position.set(-10, 23, 0) // y = 2
+            desklamp_switch_core.position.set(-5, 21.5, -10) // y = 2
             desklampswitch.add(desklamp_switch, desklamp_switch_core);
 
             var roomlightswitch = new THREE.Group();
             scene.add(roomlightswitch);
             
-            roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
+            roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
             roomlight_switch.name = 'roomlight_switch'
-            roomlight_switch.position.set(10, 22, 0)
+            roomlight_switch.position.set(5, 21, -10)
             
-            roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
+            roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
             roomlight_switch_core.name = 'roomlight_switch_core'
-            roomlight_switch_core.position.set(10, 23, 0)
+            roomlight_switch_core.position.set(5, 21.5, -10)
             roomlightswitch.add(roomlight_switch, roomlight_switch_core);
             
             pickables = [desklamp_switch_core, roomlight_switch_core];
@@ -322,7 +441,7 @@
             scene.add( sphere );
             
             //light
-            desk_light = new THREE.PointLight(0xffffff, 1, 100); //,100
+            desk_light = new THREE.PointLight(0xffffff, 0.9, 100); //,100
             desk_light.position.set(-19, 38, -10);
             scene.add(desk_light);
 
@@ -373,9 +492,9 @@
                     directionalLight.intensity = 0;
                     roomlit = !roomlit; //toggle
                 }
-                $('#msg').text('you have picked ' + '"' + intersects[0].object.name + '"')
+                //$('#msg').text('you have picked ' + '"' + intersects[0].object.name + '"')
             } else {
-                $('#msg').text('nothing picked')
+                //$('#msg').text('nothing picked')
             }
 
         }
