@@ -71,8 +71,9 @@
         var lit = true, roomlit = true;
         var ambient, directionalLight;
         var materialArray;
-        var theObjectAll;
+        var theObjectAll, theObjectPencil, theObjectChair;
         var sphere;
+        var pen_holder, pen_holder_entrys;
         
         var walls, wall_entrys;
         var desk_things, desk_entrys;
@@ -90,6 +91,11 @@
                 this.pos = new THREE.Vector3();
             }
         }
+        class PenHolder {
+            constructor() {
+                this.pos = new THREE.Vector3();
+            }
+        }
         class Desk {
             constructor() {
                 this.pos = new THREE.Vector3();
@@ -98,7 +104,7 @@
         
         init();
         animate();
-        function unitize (object, targetSize) {  
+        function unitize (object, x, y, z,targetSize) {  
             // find bounding box of 'object'
             var box3 = new THREE.Box3();
             box3.setFromObject (object);
@@ -116,7 +122,8 @@
 
             theObject.add (object);
             object.scale.set (scaleSet, scaleSet, scaleSet);
-            object.position.set (-center.x*scaleSet-22, -center.y*scaleSet + size.y/2*scaleSet+21, -center.z*scaleSet-10);
+            object.position.set (-center.x*scaleSet+x, -center.y*scaleSet + size.y/2*scaleSet+y, -center.z*scaleSet+z);
+            //-22, 21, -10
             return theObject;
 
             // helper function
@@ -227,18 +234,14 @@
             
             geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)]);
             //left-up
-            
+
             geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
             geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
-            //front-top
-            
-//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
-//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
-//            //backtop
-            
-            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
-            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
-            //bottom
+            //front top
+//            
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+//            //bottom
             
             geometry.computeFaceNormals();
             geometry.computeVertexNormals();
@@ -265,6 +268,9 @@
             texture_right.wrapS = THREE.RepeatWrapping;
             texture_right.repeat.x = - 1;
             
+            texture_left.wrapS = THREE.RepeatWrapping;
+            texture_left.repeat.x = - 1;
+            
             texture_left.wrapT = THREE.RepeatWrapping;
             texture_left.repeat.y = - 1;
             
@@ -279,11 +285,13 @@
                 new THREE.MeshPhongMaterial({map:texture_backup, side: THREE.DoubleSide}),
                 new THREE.MeshPhongMaterial({map:texture_left, side: THREE.DoubleSide}),
                 new THREE.MeshPhongMaterial({map:texture_leftup, side: THREE.DoubleSide}),
-                new THREE.MeshPhongMaterial({map:texture_fronttop, side: THREE.DoubleSide}),
-                //new THREE.MeshPhongMaterial({map:texture_fronttop, side: THREE.DoubleSide}),
+                new THREE.MeshPhongMaterial({color:'white', side: THREE.DoubleSide}),
                 new THREE.MeshPhongMaterial({color:'white', side: THREE.DoubleSide})
             );
-            return new THREE.Mesh(geometry, materialArray);
+            let tea_case = new THREE.Mesh(geometry, materialArray);
+            tea_case.castShadow = true;
+            tea_case.receiveShadow = true;
+            return tea_case;
         }
 
         function init() {
@@ -302,17 +310,22 @@
             renderer = new THREE.WebGLRenderer();
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setClearColor(0x000000);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;//PCFSoftShadowMap
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
 
             document.body.appendChild(renderer.domElement);
             
             ambient = new THREE.AmbientLight(0x444444);
+            ambient.castShadow = true;
             scene.add(ambient);
             
             directionalLight = new THREE.DirectionalLight(0xffffff);
             directionalLight.position.set(0, 1, 1).normalize();
+            directionalLight.castShadow = true;
             scene.add(directionalLight);
+            directionalLight.shadow.bias = -.01;
 
             
             /////////////////////////////////////////////////////////////////////
@@ -320,24 +333,32 @@
             scene.add(desklampswitch);
             
             desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
-            desklamp_switch.name = 'desklamp_switch'
-            desklamp_switch.position.set(-5, 21, -10) //y = 1
+            desklamp_switch.castShadow = true;
+            desklamp_switch.receiveShadow = true;
+            desklamp_switch.name = 'desklamp_switch';
+            desklamp_switch.position.set(-5, 21, -10); //y = 1
             
             desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
-            desklamp_switch_core.name = 'desklamp_switch_core'
-            desklamp_switch_core.position.set(-5, 21.5, -10) // y = 2
+            desklamp_switch_core.castShadow = true;
+            desklamp_switch_core.receiveShadow = true;
+            desklamp_switch_core.name = 'desklamp_switch_core';
+            desklamp_switch_core.position.set(-5, 21.5, -10); // y = 2
             desklampswitch.add(desklamp_switch, desklamp_switch_core);
 
             var roomlightswitch = new THREE.Group();
             scene.add(roomlightswitch);
             
             roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
-            roomlight_switch.name = 'roomlight_switch'
-            roomlight_switch.position.set(5, 21, -10)
+            roomlight_switch.castShadow = true;
+            roomlight_switch.receiveShadow = true;
+            roomlight_switch.name = 'roomlight_switch';
+            roomlight_switch.position.set(5, 21, -10);
             
             roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
-            roomlight_switch_core.name = 'roomlight_switch_core'
-            roomlight_switch_core.position.set(5, 21.5, -10)
+            roomlight_switch_core.castShadow = true;
+            roomlight_switch_core.receiveShadow = true;
+            roomlight_switch_core.name = 'roomlight_switch_core';
+            roomlight_switch_core.position.set(5, 21.5, -10);
             roomlightswitch.add(roomlight_switch, roomlight_switch_core);
             
             pickables = [desklamp_switch_core, roomlight_switch_core];
@@ -365,7 +386,9 @@
                 objLoader.setPath('desk_lamp/');
                 objLoader.load('Desk_lamp.obj', function(object) {
                     //var theObject =  unitize (object, 20);
-                    theObjectAll = unitize (object, 20);
+                    theObjectAll = unitize (object, -22, 21, -10, 20);
+                    theObjectAll.children[0].castShadow = true;
+                    theObjectAll.children[0].receiveShadow = true;
                     //yellow_box = new THREE.BoxHelper (theObjectAll);
                     scene.add (theObjectAll);				
                     //scene.add (yellow_box);
@@ -375,34 +398,83 @@
                         function(mesh) {
                             if (mesh instanceof THREE.Mesh) {
                                 mesh.material.side = THREE.DoubleSide;
+                                
                             }
                         }
                     );
                 }, onProgress, onError);
             });
             
+            var onProgress2 = function(xhr) {
+                if (xhr.lengthComputable) {
+                  var percentComplete = xhr.loaded / xhr.total * 100;
+                  console.log(Math.round(percentComplete, 2) + '% downloaded');
+                }
+            };
+            var onError2 = function(xhr) {};
+            var mtlLoader2 = new THREE.MTLLoader();
+            mtlLoader2.setPath('woodchair/');
+            mtlLoader2.load('WoodChair.mtl', function(materials) {
+                materials.preload();
+                var objLoader2 = new THREE.OBJLoader();
+                objLoader2.setMaterials(materials);
+                objLoader2.setPath('woodchair/');
+                objLoader2.load('WoodChair.obj', function(object) {
+                    theObjectChair = unitize (object, 10, -9.5, 40, 30);
+                    theObjectChair.children[0].rotation.x = -Math.PI/2;
+                    theObjectChair.children[0].rotation.z = -Math.PI/4;
+                    scene.add (theObjectChair);
+                    object.traverse (
+                        function(mesh) {
+                            if (mesh instanceof THREE.Mesh) {
+                                mesh.material.side = THREE.DoubleSide;
+                                mesh.castShadow = true;
+                                mesh.receiveShadow = true;
+                            }
+                        }
+                    );
+                }, onProgress2, onError2);
+            });
+            
             //
             //walls
             var cubeGeom = new THREE.BoxGeometry(206, 50, 6);
+            var cubeGeom_yuka = new THREE.BoxGeometry(206, 206, 0.5);
+            
             var wallMeterial = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
+                color: 0xAAAAAA,
                 transparent: true,
                 opacity: 1,
                 side: THREE.DoubleSide,
             });
+            
             let wall_entry = new THREE.Mesh(cubeGeom, wallMeterial);
+            wall_entry.castShadow = true;
+            wall_entry.receiveShadow = true;
+            let yuka_entry = new THREE.Mesh(cubeGeom_yuka, wallMeterial);
+            yuka_entry.castShadow = true;
+            yuka_entry.receiveShadow = true;
+            
             walls = [];
             wall_entrys = []
-            let PosOfx = [0, 100, 0, -100],
-            PosOfz = [100, 0, -100, 0],
-            Rotation = [0, 1, 0, 1];
+            let PosOfx = [0, 100, 0, -100, 0],
+            PosOfz = [100, 0, -100, 0, 0],
+            Rotation = [0, 1, 0, 1, 2];
 
-            for (let i = 2; i < 4; i++) {
+            for (let i = 2; i < 5; i++) {
                 let wall = new Wall();
                 walls.push(wall);
-                let thisMesh = wall_entry.clone();
+                let thisMesh = new THREE.Mesh;
+                if(i != 4) thisMesh = wall_entry.clone();
+                else thisMesh = yuka_entry.clone();
+                
                 if (Rotation[i] == 1) thisMesh.rotation.y = -Math.PI / 2;
-                thisMesh.position.set(PosOfx[i], 23.5, PosOfz[i], Rotation[i]);
+                else if (Rotation[i] == 2) {
+                    thisMesh.rotation.z = -Math.PI / 2;
+                    thisMesh.rotation.x = Math.PI / 2;
+                }
+                if (Rotation[i] == 2) thisMesh.position.set(PosOfx[i], -2, PosOfz[i], Rotation[i]);
+                else thisMesh.position.set(PosOfx[i], 23.5, PosOfz[i], Rotation[i]);
                 wall_entrys.push(thisMesh);
                 scene.add(thisMesh)
             }
@@ -410,12 +482,15 @@
             //Desk
             var cubeGeom = new THREE.BoxGeometry(70, 30, 2);
             var wallMeterial = new THREE.MeshPhongMaterial({
-                color: 0xce945b,
+                color: 0x3b240e,
                 transparent: true,
                 opacity: 1,
                 side: THREE.DoubleSide,
             });
             let desk_entry = new THREE.Mesh(cubeGeom, wallMeterial);
+            desk_entry.castShadow = true;
+            desk_entry.receiveShadow = true;
+            
             desk_things = []
             desk_entrys = []
             PosOfx = [0, 0, 0, 0],
@@ -426,26 +501,87 @@
                 let desk = new Desk();
                 desk_things.push(desk);
                 let thisMesh = desk_entry.clone();
+                //thisMesh.castShadow = true;
+                //thisMesh.receiveShadow = true;
+
                 if (i == 0) thisMesh.rotation.x = -Math.PI / 2;
                 thisMesh.position.set(PosOfx[i], 20, PosOfz[i], Rotation[i]);
                 desk_entrys.push(thisMesh);
                 scene.add(thisMesh)
             }
-            
-            //
+
             var sphere_geometry = new THREE.SphereGeometry( 2, 32, 32 );
             var sphere_material = new THREE.MeshPhongMaterial( {color: 0xffff00} );
             sphere = new THREE.Mesh( sphere_geometry, sphere_material );
+            //sphere.castShadow = true;
+            //sphere.receiveShadow = true;
             sphere.material.emissive = new THREE.Color('yellow');
             sphere.position.set(-19, 38, -10);
             scene.add( sphere );
             
             //light
             desk_light = new THREE.PointLight(0xffffff, 0.9, 100); //,100
+            desk_light.castShadow = true;
             desk_light.position.set(-19, 38, -10);
+            desk_light.shadow.camera.near = 0.1;
+            desk_light.shadow.camera.far = 200;
             scene.add(desk_light);
+            
+            
+            const helper = new THREE.PointLightHelper(desk_light);
+            scene.add(helper);
 
             /////////////////////////////////////////////////
+            
+            //pen holder
+            var penholder_wall_length = new THREE.BoxGeometry(6, 5, 0.1);
+            var penholder_wall_width = new THREE.BoxGeometry(3, 5, 0.1);
+            var penholder_wall_bottom = new THREE.BoxGeometry(3, 6, 0.1);
+            THREE.ImageUtils.crossOrigin = '';
+            var penholder_wall_Meterial = new THREE.MeshPhongMaterial({
+                transparent: true,
+                map: THREE.ImageUtils.loadTexture('./metal_holes.png')
+            });
+            let pen_holder_entry_len = new THREE.Mesh(penholder_wall_length, penholder_wall_Meterial);
+            pen_holder_entry_len.castShadow = true;
+            pen_holder_entry_len.receiveShadow = true;
+            let pen_holder_entry_wid = new THREE.Mesh(penholder_wall_width, penholder_wall_Meterial);
+            pen_holder_entry_wid.castShadow = true;
+            pen_holder_entry_wid.receiveShadow = true;
+            let pen_holder_entry_bot = new THREE.Mesh(penholder_wall_bottom, penholder_wall_Meterial);
+            pen_holder_entry_bot.castShadow = true;
+            pen_holder_entry_bot.receiveShadow = true;
+
+            pen_holder = [];
+            pen_holder_entrys = []
+            let pen_PosOfx = [15, 18, 15, 12, 15],
+            pen_PosOfz = [-10, -11.5, -13, -11.5, -11.5],
+            pen_Rotation = [0, 1, 0, 1, 2];
+
+            for (let i = 0; i < 5; i++) {
+                let pen_holder_wall = new PenHolder();
+                pen_holder.push(pen_holder_wall);
+                let thisMesh = new THREE.Mesh();
+                thisMesh.castShadow = true;
+                thisMesh.receiveShadow = true;
+                if (pen_Rotation[i] == 0) thisMesh = pen_holder_entry_len.clone();
+                else if (pen_Rotation[i] == 1) thisMesh = pen_holder_entry_wid.clone();
+                else thisMesh = pen_holder_entry_bot.clone();
+                
+                if (pen_Rotation[i] == 1) thisMesh.rotation.y = -Math.PI / 2;
+                else if (pen_Rotation[i] == 2) {
+                    thisMesh.rotation.z = -Math.PI / 2;
+                    thisMesh.rotation.x = Math.PI / 2;
+                }
+                
+                if (pen_Rotation[i] == 2) thisMesh.position.set(pen_PosOfx[i], 21, pen_PosOfz[i]);
+                else thisMesh.position.set(pen_PosOfx[i], 23, pen_PosOfz[i]);
+                
+                pen_holder_entrys.push(thisMesh);
+                scene.add(thisMesh)
+            }
+            ////////////////////////////
+            
         }
 
         function onDocumentMouseDown(event) {
