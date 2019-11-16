@@ -435,7 +435,70 @@
                     );
                 }, onProgress2, onError2);
             });
-            
+            //pencil
+            var onProgress3 = function(xhr) {
+                if (xhr.lengthComputable) {
+                  var percentComplete = xhr.loaded / xhr.total * 100;
+                  console.log(Math.round(percentComplete, 2) + '% downloaded');
+                }
+            };
+            var onError3 = function(xhr) {};
+            var mtlLoader3 = new THREE.MTLLoader();
+            mtlLoader3.setPath('pencil/');
+            mtlLoader3.load('pencil.mtl', function(materials) {
+                materials.preload();
+                var objLoader3 = new THREE.OBJLoader();
+                objLoader3.setMaterials(materials);
+                objLoader3.setPath('pencil/');
+                objLoader3.load('pencil.obj', function(object) {
+                    theObjectChair = unitize (object, 12.8, 24.5, -12, 8);
+                    theObjectChair.children[0].rotation.x = -Math.PI/2;
+                    theObjectChair.children[0].rotation.z = -Math.PI/4;
+                    theObjectChair.children[0].rotation.y = -Math.PI/6;
+                    scene.add (theObjectChair);
+                    object.traverse (
+                        function(mesh) {
+                            if (mesh instanceof THREE.Mesh) {
+                                mesh.material.side = THREE.DoubleSide;
+                                mesh.castShadow = true;
+                                mesh.receiveShadow = true;
+                            }
+                        }
+                    );
+                }, onProgress3, onError3);
+            });
+            //pen
+            var onProgress4 = function(xhr) {
+                if (xhr.lengthComputable) {
+                  var percentComplete = xhr.loaded / xhr.total * 100;
+                  console.log(Math.round(percentComplete, 2) + '% downloaded');
+                }
+            };
+            var onError4 = function(xhr) {};
+            var mtlLoader4 = new THREE.MTLLoader();
+            mtlLoader4.setPath('pen/');
+            mtlLoader4.load('Pen_01.mtl', function(materials) {
+                materials.preload();
+                var objLoader4 = new THREE.OBJLoader();
+                objLoader4.setMaterials(materials);
+                objLoader4.setPath('pen/');
+                objLoader4.load('Pen_01.obj', function(object) {
+                    theObjectChair = unitize (object, 15, 20, -12, 8);
+                    theObjectChair.children[0].rotation.x = -Math.PI/2;
+                    theObjectChair.children[0].rotation.z = Math.PI/2.7;
+                    theObjectChair.children[0].rotation.y = Math.PI/2.5;
+                    scene.add (theObjectChair);
+                    object.traverse (
+                        function(mesh) {
+                            if (mesh instanceof THREE.Mesh) {
+                                mesh.material.side = THREE.DoubleSide;
+                                mesh.castShadow = true;
+                                mesh.receiveShadow = true;
+                            }
+                        }
+                    );
+                }, onProgress4, onError4);
+            });
             //
             //walls
             var cubeGeom = new THREE.BoxGeometry(206, 50, 6);
