@@ -691,11 +691,18 @@
             var penholder_wall_length = new THREE.BoxGeometry(6, 5, 0.1);
             var penholder_wall_width = new THREE.BoxGeometry(3, 5, 0.1);
             var penholder_wall_bottom = new THREE.BoxGeometry(3, 6, 0.1);
-            THREE.ImageUtils.crossOrigin = '';
+            
+            let loader = new THREE.TextureLoader();
+            loader.crossOrigin = '';
+            texture = loader.load('./texture.jpg');
+            alpha = loader.load('./metal_holes_inverse.png');
+            
             var penholder_wall_Meterial = new THREE.MeshPhongMaterial({
-                transparent: true,
-                map: THREE.ImageUtils.loadTexture('./metal_holes.png')
+                map: texture,
+                alphaMap: alpha,
+                transparent: true
             });
+            
             let pen_holder_entry_len = new THREE.Mesh(penholder_wall_length, penholder_wall_Meterial);
             pen_holder_entry_len.castShadow = true;
             pen_holder_entry_len.receiveShadow = true;
