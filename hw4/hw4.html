@@ -74,6 +74,7 @@
         var theObjectAll, theObjectPencil, theObjectChair;
         var sphere;
         var pen_holder, pen_holder_entrys;
+        var desklampswitch, roomlightswitch;
         
         var walls, wall_entrys;
         var desk_things, desk_entrys;
@@ -99,6 +100,69 @@
         class Desk {
             constructor() {
                 this.pos = new THREE.Vector3();
+            }
+        }
+        
+        class Light_Switch {
+            constructor(name) {
+                this.mesh = new THREE.Object3D();
+                this.pos = new THREE.Vector3();
+                this.name = name;
+            }
+            init(x, y, z,color_in, color_in2, name1, name2){
+                let desklampswitch = new THREE.Object3D();
+                this.desklampswitch1 = new THREE.Object3D();
+                let desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:color_in}));//0xd0d0d0
+                desklamp_switch.castShadow = true;
+                desklamp_switch.receiveShadow = true;
+                desklamp_switch.name = name1;
+                desklamp_switch.position.set(x, y, z); //y = 1
+                this.desklampswitch1.add (desklamp_switch);
+
+                desklampswitch.add(this.desklampswitch1);
+
+                this.desklampswitch2 = new THREE.Object3D();
+                let desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:color_in2}));//0xed9696
+                desklamp_switch_core.castShadow = true;
+                desklamp_switch_core.receiveShadow = true;
+                desklamp_switch_core.name = name2;
+                desklamp_switch_core.position.set(x, y+0.5, z); // y = 2
+                this.desklampswitch2.add (desklamp_switch_core);
+                desklampswitch.add(this.desklampswitch2);
+                //this.desklampswitch1.add(this.desklampswitch2);
+                return desklampswitch;
+                //desklampswitch.mesh.add(desklamp_switch_core);
+                //desklampswitch.mesh.add(desklamp_switch);
+
+//                  let twoLink = new THREE.Object3D();
+//
+//                    let mat = new THREE.MeshNormalMaterial()
+//                    this.link1 = new THREE.Object3D();
+//                  this.link1.add (new THREE.AxisHelper (10))
+//                  let mesh = new THREE.Mesh (new THREE.BoxGeometry (10,2,3), mat)
+//                  this.link1.add (mesh);
+//                  mesh.position.x = 5
+//
+//                  twoLink.add (this.link1)
+//
+//                  this.link2 = new THREE.Object3D();
+//                  this.link2.add (new THREE.AxisHelper (10))
+//                  let mesh2 = new THREE.Mesh (new THREE.BoxGeometry (10,2,3), mat)
+//                  this.link2.add (mesh2);
+//                  mesh2.position.x = 5
+//
+//                  this.link1.add (this.link2)
+//                  this.link2.position.x = 10
+//
+//                  this.paddle = new THREE.Mesh (new THREE.CylinderGeometry (5,5,2, 32), mat)
+//                  this.link2.add (this.paddle)
+//                  this.paddle.position.x = 10
+//
+//                  this.light = new THREE.PointLight(0x4c4c4c, 15, 30);
+//                  this.light.position.set(this.pos.x, this.pos.y, this.pos.z);
+//
+//                  twoLink.add (this.light)
+//                  return twoLink;
             }
         }
         
@@ -331,39 +395,59 @@
 
             
             /////////////////////////////////////////////////////////////////////
-            var desklampswitch = new THREE.Group();
-            scene.add(desklampswitch);
+            //var desklampswitch = new Light_Switch();
+            let temp = new Light_Switch ("desklamp_switch_core");  // global
+            let color_put = new THREE.Color(0xd0d0d0);
+            let color_put2 = new THREE.Color(0xed9696);
+            desklampswitch = temp.init(-5, 21, -10, color_put, color_put2, 'desklamp_switch', 'desklamp_switch_core');
+            scene.add (desklampswitch);
             
-            desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
-            desklamp_switch.castShadow = true;
-            desklamp_switch.receiveShadow = true;
-            desklamp_switch.name = 'desklamp_switch';
-            desklamp_switch.position.set(-5, 21, -10); //y = 1
+            let temp2 = new Light_Switch ("roomlight_switch_core");  // global
+            let color_put3 = new THREE.Color(0xd0d0d0);
+            let color_put4 = new THREE.Color(0x96b0ed);
+            roomlightswitch = temp.init(5, 21, -10, color_put3, color_put4, 'roomlight_switch', 'roomlight_switch_core');
+            scene.add (roomlightswitch);
             
-            desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
-            desklamp_switch_core.castShadow = true;
-            desklamp_switch_core.receiveShadow = true;
-            desklamp_switch_core.name = 'desklamp_switch_core';
-            desklamp_switch_core.position.set(-5, 21.5, -10); // y = 2
-            desklampswitch.add(desklamp_switch, desklamp_switch_core);
-
-            var roomlightswitch = new THREE.Group();
-            scene.add(roomlightswitch);
+            //var desklampswitch = new THREE.Group();
             
-            roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
-            roomlight_switch.castShadow = true;
-            roomlight_switch.receiveShadow = true;
-            roomlight_switch.name = 'roomlight_switch';
-            roomlight_switch.position.set(5, 21, -10);
+//            desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
+//            desklamp_switch.castShadow = true;
+//            desklamp_switch.receiveShadow = true;
+//            desklamp_switch.name = 'desklamp_switch';
+//            desklamp_switch.position.set(-5, 21, -10); //y = 1
+//            
+//            desklamp_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0xed9696}));
+//            desklamp_switch_core.castShadow = true;
+//            desklamp_switch_core.receiveShadow = true;
+//            desklamp_switch_core.name = 'desklamp_switch_core';
+//            desklamp_switch_core.position.set(-5, 21.5, -10); // y = 2
+//            desklampswitch.mesh.add(desklamp_switch_core);
+//            desklampswitch.mesh.add(desklamp_switch);
             
-            roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
-            roomlight_switch_core.castShadow = true;
-            roomlight_switch_core.receiveShadow = true;
-            roomlight_switch_core.name = 'roomlight_switch_core';
-            roomlight_switch_core.position.set(5, 21.5, -10);
-            roomlightswitch.add(roomlight_switch, roomlight_switch_core);
+            //scene.add(desklampswitch);
             
-            pickables = [desklamp_switch_core, roomlight_switch_core];
+            //scene.add(desklampswitch);
+            
+//            var roomlightswitch = new THREE.Group();
+//            scene.add(roomlightswitch);
+//            
+//            roomlight_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
+//            roomlight_switch.castShadow = true;
+//            roomlight_switch.receiveShadow = true;
+//            roomlight_switch.name = 'roomlight_switch';
+//            roomlight_switch.position.set(5, 21, -10);
+//            
+//            roomlight_switch_core = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), new THREE.MeshPhongMaterial ({color:0x96b0ed}));
+//            roomlight_switch_core.castShadow = true;
+//            roomlight_switch_core.receiveShadow = true;
+//            roomlight_switch_core.name = 'roomlight_switch_core';
+//            roomlight_switch_core.position.set(5, 21.5, -10);
+//            roomlightswitch.add(roomlight_switch, roomlight_switch_core);
+            
+            //pickables = [desklamp_switch_core, roomlight_switch_core];
+            //console.log(desklampswitch);
+            //console.log("*name : " + desklampswitch.children[1].children[0].name);
+            pickables = [desklampswitch.children[1].children[0], roomlightswitch.children[1].children[0]];
 
             raycaster = new THREE.Raycaster();
             document.addEventListener('mousedown', onDocumentMouseDown, false);
@@ -653,11 +737,6 @@
             ////////////////////////////
             
         }
-        function task(i){
-            setTimeout(function(){
-                console.log(i);
-            }, 1000*i);
-        }
         function onDocumentMouseDown(event) {
 
             // PICKING DETAILS: 
@@ -676,48 +755,53 @@
             raycaster.setFromCamera(mouse, camera);
             var intersects = raycaster.intersectObjects(pickables);
             if (intersects.length > 0) {
-                console.log(intersects[0].object.name);
-                console.log("desk ligh : " + lit);
+                //console.log("intersects name : " + intersects[0].object.name);
+                //console.log("desk ligh : " + lit);
+                //console.log(desklampswitch.children[1].children[0]);
                 //console.log(intersects[0].object.name == "desklamp_switch_core");
                 if(!lit && intersects[0].object.name == "desklamp_switch_core") {
                     desk_light.intensity = 0;
-                    desklamp_switch_core.material.emissive = new THREE.Color('black');
+                    //desklamp_switch_core.material.emissive = new THREE.Color('black');
+                    desklampswitch.children[1].children[0].material.emissive = new THREE.Color('black');
                     sphere.material.emissive = new THREE.Color('yellow');
                     for(let j = 0; j < 10 ; j++){
                         setTimeout(function(){
-                            console.log(desk_light.intensity);
+                            //console.log(desk_light.intensity);
                             desk_light.intensity += 0.1;
                         }, 100*j);
                     }
                     //desk_light.intensity = 1;
-                    console.log(desk_light.intensity);
+                    //console.log(desk_light.intensity);
                     lit = !lit; //toggle
                 }else if (lit && intersects[0].object.name == "desklamp_switch_core"){
+                    //console.log("intersects name : " + intersects[0].object.name);
+                    //console.log("desk ligh : " + lit);
                     desk_light.intensity = 1;
-                    desklamp_switch_core.material.emissive = new THREE.Color('red');
+                    //desklamp_switch_core.material.emissive = new THREE.Color('red');
+                    desklampswitch.children[1].children[0].material.emissive = new THREE.Color('red');
                     sphere.material.emissive = new THREE.Color('black');
                     for(let j = 0; j < 10 ; j++){
                         //desk_light.intensity -= 0.1;
                         setTimeout(function(){
-                            console.log(desk_light.intensity);
+                            //console.log(desk_light.intensity);
                             desk_light.intensity -= 0.1;
                         }, 100*j);
                     }
                     
                     //desk_light.intensity = 0;
-                    console.log(desk_light.intensity);
+                    //console.log(desk_light.intensity);
                     lit = !lit; //toggle
                 }
                 
                 //console.log(intersects[0].object.name);
-                console.log("room ligh : " + roomlit);
+                //console.log("room ligh : " + roomlit);
                 if(!roomlit && intersects[0].object.name == "roomlight_switch_core") {
                     directionalLight.intensity = 0;
-                    roomlight_switch_core.material.emissive = new THREE.Color('black');
+                    roomlightswitch.children[1].children[0].material.emissive = new THREE.Color('black');
                     //directionalLight.intensity = 1;
                     for(let j = 0; j < 10 ; j++){
                         setTimeout(function(){
-                            console.log(directionalLight.intensity);
+                            //console.log(directionalLight.intensity);
                             directionalLight.intensity += 0.1;
                         }, 100*j);
                     }
@@ -725,10 +809,10 @@
                     roomlit = !roomlit; //toggle
                 }else if (roomlit && intersects[0].object.name == "roomlight_switch_core"){
                     directionalLight.intensity = 1;
-                    roomlight_switch_core.material.emissive = new THREE.Color('blue');
+                    roomlightswitch.children[1].children[0].material.emissive = new THREE.Color('blue');
                     for(let j = 0; j < 10 ; j++){
                         setTimeout(function(){
-                            console.log(directionalLight.intensity);
+                            //console.log(directionalLight.intensity);
                             directionalLight.intensity -= 0.1;
                         }, 100*j);
                     }
