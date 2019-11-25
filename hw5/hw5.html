@@ -43,12 +43,15 @@ body {
 <script id="myVertexShader" type="x-shader/x-vertex">
   uniform int shading;
   uniform int coordinate;
+  //uniform is come form outside
   varying vec3 color;
   varying float myEyeX;
   varying vec3 position_input;
+  varying vec3 eyepos_window;
+  //Use "varying" to pass value between "myVertexShader" and "myFragmentShader"
 	
-  void perVertexShading(vec3 objpos, vec3 worldpos) {
-  //object position, world position
+  void perVertexShading(vec3 objpos, vec3 worldpos, vec3 eyepos) {
+    //object position, world position
     if (coordinate == 0) {
   	  if (objpos.x > 0.0) 
     	color = vec3 (1,1,1);
@@ -60,37 +63,27 @@ body {
       else
     	color = vec3 (0,0,0);    	
     }
-  }
-
-  // your homework
-  void perPixelShading(vec3 objpos, vec3 worldpos, float myeyex) {
-    if (coordinate == 0) {
-      if (myeyex > 0.0)
-        color = vec3 (1,1,1);
+    else if (coordinate == 2) {
+  	  if (eyepos.x > 0.0) 
+    	color = vec3 (1,1,1);
       else
-        color = vec3 (0,0,0);
-    } else if (coordinate == 1) {
-      if (myeyex > 0.0)
-        color = vec3 (1,1,1);
-      else
-        color = vec3 (0,0,0);    	
+    	color = vec3 (0,0,0);    	
     }
   }
   
   void main() {
-    
+    //vertex must need "gl_Position"!
 	gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
     vec4 worldpos = modelMatrix * vec4 (position, 1.0);
     vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
     myEyeX = eyepos.x;
+    eyepos_window = eyepos.xyz;
     
+    //position come form out side, Vec3(Vertex coordinates, normal vector, material coordinates)
     position_input = position;
-    //vertex, norl, textture
     
-  	if (shading == 0)  // per-vertex shading
-    	perVertexShading(position, worldpos.xyz);
-    else
-    	perPixelShading(position, worldpos.xyz, myEyeX);
+  	if (shading == 0)  
+    	perVertexShading(position, worldpos.xyz, eyepos.xyz);
   }
 </script>
 
@@ -98,43 +91,38 @@ body {
     uniform int shading;
     uniform int coordinate;
     varying vec3 color;
+    varying vec3 eyepos_window;
     varying float myEyeX;
     varying vec3 position_input;
     
-	void main() {
+	void main() { // per-pixel shading
         if (shading == 0){
+            //fragment must need "gl_FragColor"!
             gl_FragColor = vec4 (color, 1.0);
         }
         if(shading == 1) {
-            if(coordinate == 1) {
+            
+            if (coordinate == 0){
+                if (position_input.x > 0.0) {
+                    gl_FragColor = vec4 (1,1,1,1);
+                } else {
+                    gl_FragColor = vec4 (0,0,0,0);
+                }    
+            } else if(coordinate == 1) {
                 if (myEyeX > 0.0) {
                     gl_FragColor = vec4 (1,1,1,1);
                 } else {
                     gl_FragColor = vec4 (0,0,0,0);
                 }
-            }
-            else if (coordinate == 0){
-                if (position_input.x > 0.0) {
+            } else if(coordinate == 2) {
+                if (eyepos_window.x > 0.0) {
                     gl_FragColor = vec4 (1,1,1,1);
                 } else {
                     gl_FragColor = vec4 (0,0,0,0);
                 }
-                
             }
         }
-		//gl_FragColor = vec4 (color, 1.0);
 	}
-    //varying vec3 color;
-    //varying float myEyeX;
-    //varying vec4 myColor;
-    
-	//void main() {
-    //    if (myEyeX > 0.0) {
-    //        gl_FragColor = vec4 (1,1,1,1);
-    //    } else {
-    //        gl_FragColor = vec4 (0,0,0,0);
-    //    }
-	//}
 </script>
 
 <script>
@@ -146,6 +134,8 @@ $('#coords').change( function() {
 		teapotMaterial.uniforms.coordinate.value = 0;
 	} else if (objType === 'world') {
 		teapotMaterial.uniforms.coordinate.value = 1;
+	} else if (objType === 'eye') {
+		teapotMaterial.uniforms.coordinate.value = 2;
 	}
 });
 
@@ -162,7 +152,7 @@ $('#shading').change( function() {
 
 
 var scene, renderer, camera;
-var movingTeapot;
+var movingTeapot, stableTeapot;
 var angle = 0;
 var teapotMaterial;
 
@@ -213,6 +203,10 @@ function init() {
 
   movingTeapot = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotMaterial);
   scene.add (movingTeapot);
+    
+  teapotPhongMaterial = new THREE.MeshPhongMaterial({color:0xCCCCCC});
+  stableTeapot = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotPhongMaterial);
+  scene.add (stableTeapot);
   
 }
 
