@@ -401,13 +401,14 @@
             let color_put2 = new THREE.Color(0xed9696);
             desklampswitch = temp.init(-5, 21, -10, color_put, color_put2, 'desklamp_switch', 'desklamp_switch_core');
             scene.add (desklampswitch);
-            
+            //console.log(desklampswitch.children[1].children[0].castShadow, desklampswitch.children[1].children[0].receiveShadow);
+
             let temp2 = new Light_Switch ("roomlight_switch_core");  // global
             let color_put3 = new THREE.Color(0xd0d0d0);
             let color_put4 = new THREE.Color(0x96b0ed);
             roomlightswitch = temp.init(5, 21, -10, color_put3, color_put4, 'roomlight_switch', 'roomlight_switch_core');
             scene.add (roomlightswitch);
-            
+
             //var desklampswitch = new THREE.Group();
             
 //            desklamp_switch = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 20), new THREE.MeshPhongMaterial ({color:0xd0d0d0}));
