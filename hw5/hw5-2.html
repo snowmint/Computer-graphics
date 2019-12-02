@@ -118,7 +118,8 @@ body {
 
 <body>
 <div id="info">
-  hw5-1 Basic GLSL <br><br>
+  hw5-2 Gooch shade <br><br>
+<!--
     <select id="coords" class="select-style">
       <option value="obj" selected>Object Coordinate</option>
       <option value="world">World Coordinate</option>
@@ -128,6 +129,7 @@ body {
       <option value="perVertex" selected> Per Vertex</option>
       <option value="perPixel"> Per Pixel </option>
     </select>
+-->
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
 <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
@@ -135,130 +137,46 @@ body {
 <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
 <!--teatop geo on line 41-->
 <script id="myVertexShader" type="x-shader/x-vertex">
-  uniform int shading;
-  uniform int coordinate;
-  //uniform is come form outside
-  varying vec3 color;
-  varying float myEyeX;
-  varying vec3 position_input;
-  varying vec3 eyepos_window;
-  varying vec3 worldpos_window;
-  //Use "varying" to pass value between "myVertexShader" and "myFragmentShader"
-  
-  //shadow
-  uniform vec3 lightpos;  // world coordinate
-  varying vec3 eyelightdir;
-  varying vec3 eyenormal;
-  varying vec4 eyepos;
-	
-  void perVertexShading(vec3 objpos, vec3 worldpos, vec3 eyepos) {
-    //object position, world position
-    if (coordinate == 0) {
-  	  if (objpos.x > 0.0) 
-    	color = vec3 (1,1,1);
-      else
-    	color = vec3 (0,0,0);
-    } else if (coordinate == 1) {
-  	  if (worldpos.x > 0.0) 
-    	color = vec3 (1,1,1);
-      else
-    	color = vec3 (0,0,0);    	
+    uniform vec3 lightpos;  // world coordinate
+    varying vec3 eyelightdir;
+    varying vec3 eyenormal;
+    
+    varying vec4 eyepos;
+    
+    void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+        eyepos = modelViewMatrix * vec4 (position, 1.0);
+        vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
+        eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
+        eyenormal = normalMatrix * normal;
     }
-    else if (coordinate == 2) {
-  	  if (eyepos.x > 0.0) 
-    	color = vec3 (1,1,1);
-      else
-    	color = vec3 (0,0,0);    	
-    }
-  }
-  
-  void main() {
-    //vertex must need "gl_Position"!
-	gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
-    vec4 worldpos = modelMatrix * vec4 (position, 1.0);
-    vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
-    myEyeX = eyepos.x;
-    eyepos_window = eyepos.xyz;
-    worldpos_window = worldpos.xyz;
-    
-    //position come form out side, Vec3(Vertex coordinates, normal vector, material coordinates)
-    position_input = position;
-    
-    //shadow
-    eyepos = modelViewMatrix * vec4 (position, 1.0);
-    vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
-    eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
-    eyenormal = normalMatrix * normal;
-    
-  	if (shading == 0)  
-    	perVertexShading(position, worldpos.xyz, eyepos.xyz);
-  }
 </script>
 
 <script id="myFragmentShader" type="x-shader/x-fragment">
-    uniform int shading;
-    uniform int coordinate;
-    
-    varying vec3 color;
-    varying vec3 eyepos_window;
-    varying float myEyeX;
-    varying vec3 position_input;
-    varying vec3 worldpos_window;
-    
-    //shadow
     varying vec3 eyelightdir;
     varying vec3 eyenormal;
     varying vec4 eyepos;
     
-    uniform vec3 kcool;
+    uniform vec3 kcool; 
     uniform vec3 kwarm;
-    vec3 colorA = vec3(0.149,0.141,0.912);
-    vec3 colorB = vec3(1.000,0.833,0.224);
+    //vec3 colorA = vec3(0.149,0.141,0.912);
+    //vec3 colorB = vec3(1.000,0.833,0.224);
     
 	void main() { 
-        float lDotn = dot (normalize (eyenormal), normalize (eyelightdir));    
+        vec3 ne = normalize (eyenormal);
+        vec3 nild = normalize (eyelightdir);
         
-        vec3 h = normalize(-normalize (eyepos.xyz) + normalize (eyelightdir));
-        float shininess = 40.;    
-        vec3 specular = pow (dot (eyenormal, h), shininess) *vec3 (1,0,0);
+        float lDotn = dot (ne, nild);    
         
-        float k = (1. + lDotn)/2.;
+        vec3 h = normalize(-normalize (eyepos.xyz) + nild);
+        float shininess = 60.;
+        vec3 specular = pow (dot(ne, h), shininess) *vec3 (1, 1, 1);
         
+        float k = (1. + lDotn)/2.; //k = (1 + l^ * n^)
         
-        // per-pixel shading
-        if (shading == 0){
-            //fragment must need "gl_FragColor"!
-            //kurosiro//gl_FragColor = vec4 (color, 1.0);
-            gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-        }
-        if(shading == 1) {
-            
-            if (coordinate == 0){
-                if (position_input.x > 0.0) {
-                    //gl_FragColor = vec4 (1,1,1,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                } else {
-                    //gl_FragColor = vec4 (0,0,0,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                }    
-            } else if(coordinate == 1) {
-                if (worldpos_window.x > 0.0) {
-                    //gl_FragColor = vec4 (1,1,1,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                } else {
-                    //gl_FragColor = vec4 (0,0,0,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                }
-            } else if(coordinate == 2) {
-                if (eyepos_window.x > 0.0) {
-                    //gl_FragColor = vec4 (1,1,1,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                } else {
-                    //gl_FragColor = vec4 (0,0,0,1);
-                    gl_FragColor = vec4(mix (colorA, colorB, k) + specular, 1.0); // built-in: mix
-                }
-            }
-        }
+        //mix = x*(1−k) + y*k.
+        gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, 1.0); // built-in: mix
 	}
 </script>
 
@@ -291,6 +209,7 @@ var movingTeapot, stableTeapot;
 var angle = 0;
 var teapotMaterial;
 var pointLight, lightSphere;
+var byab = [0.3, 0.6, 0.7, 0.6];
 
 init();
 animate();
@@ -327,13 +246,19 @@ function init() {
   /////////////////////////////////////////////////////////////////
 
   //type : integer, value : 0, v3 = vector3
+  let kblue = new THREE.Vector3(0, 0, byab[0]);
+  let kyellow = new THREE.Vector3(byab[1], byab[1], 0);
+  let kd = new THREE.Vector3(255/255, 105/255, 105/255); //209, 63, 197
+  let k_cool = kd.clone().multiplyScalar(byab[2]).add(kblue);
+  let k_warm = kd.clone().multiplyScalar(byab[3]).add(kyellow);
+  
   teapotMaterial = new THREE.ShaderMaterial({
     uniforms: {
-      lightpos: {type:'v3', value: new THREE.Vector3(0, 30, 20) },
-	  shading: {type:'i', value: 0},
-      coordinate: {type:'i', value: 0},
-      kcool:{type:'v3', value:new THREE.Vector3(0, 0, 1)},
-      kwarm:{type:'v3', value:new THREE.Vector3(1, 1, 0)}
+      lightpos: {type:'v3', value: new THREE.Vector3()},
+      kcool:{type:'v3', value:k_cool}, //blue new THREE.Vector3(0, 0, 1)
+      kwarm:{type:'v3', value:k_warm}, //yellow
+      shading: {type:'i', value: 0},
+      coordinate: {type:'i', value: 0}
 	},
     vertexShader: document.getElementById('myVertexShader').textContent,
     fragmentShader: document.getElementById('myFragmentShader').textContent
@@ -352,9 +277,8 @@ function animate() {
     angle += 0.01;
 
     // update the uniform variable
-    pointLight.position.set(60 * Math.cos(angle+40), 80, 60 * Math.sin(angle+40));
+    pointLight.position.set(60 * Math.cos(-angle/2), 80, 60 * Math.sin(-angle/2));
     //pointLight.position.set (50,80,50);
-    
     teapotMaterial.uniforms.lightpos.value.copy (pointLight.position);
     if (movingTeapot !== undefined) {
         movingTeapot.position.set (45*Math.cos(angle), 0, 45*Math.sin(angle));
