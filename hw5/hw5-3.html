@@ -178,6 +178,7 @@ var camera, scene, renderer;
 var puck;
 var stableTeapot;
 var teapots = [];
+var teapotmeshs = [];
 var teapot_num = 0;
 var raycaster, teapotMaterial;
 var mouse = new THREE.Vector2();
@@ -194,31 +195,41 @@ function remove(name) {
 }
     
 class CTeapot {
-    constructor(mesh, pos, name) {
+    constructor(mesh) {//, pos, name
         this.alive = 1;
         this.angle = 1;
+        this.toggle = 1;
         this.mesh = mesh;
-        this.mesh.name = name;
-        this.pos = pos;
-        this.pos.y += 10;
-        this.mesh.position.copy (this.pos);
+        //this.mesh.name = name;
+        //this.pos = pos;
+        //this.pos.y += 10;
+        //this.mesh.position.copy (this.pos);
+        //this.mesh.position.y += 10;
+        
         //this.mesh = new THREE.Vector3();
         //console.log(this.mesh);
+        teapotmeshs.push(this.mesh);
         console.log(this.mesh.name + " been create");
         scene.add (this.mesh);
         //console.log(this.mesh.position);
     }
     update() {
+        if(this.toggle == 1) this.angle += 0.01;
+        this.mesh.material.uniforms.opacity.value = Math.abs(Math.sin(this.angle)); 
         if(this.angle >= 3.1 && this.alive == 1) {
+            for( var i = 0; i < teapots.length; i++){ 
+               if ( teapots[i].mesh.name === this.mesh.name) {
+                 teapots.splice(i, 1); 
+               }
+            }
+            for( var j = 0; j < teapotmeshs.length; j++){ 
+               if ( teapotmeshs[j].name === this.mesh.name) {
+                 teapotmeshs.splice(j, 1); 
+               }
+            }
             remove(this.mesh.name);
-            teapots.shift();
             this.alive = 0;
         }
-//        if(teapots[i].angle >= 3) {
-//              //angles.shift();
-//              remove(teapots[i].mesh.name);
-//              teapots.pop(1);
-//          }
     }
 }
 
@@ -290,45 +301,58 @@ function onDocumentMouseDown(event) {
     // find intersections
     raycaster.setFromCamera(mouse, camera);
     var intersects = raycaster.intersectObjects(pickables);
+    var intersects_teapot = raycaster.intersectObjects(teapotmeshs);
+    
     if (intersects.length > 0) {
-        let kblue = new THREE.Vector3(0, 0, byab[0]);
-        let kyellow = new THREE.Vector3(byab[1], byab[1], 0);
-        let kd = new THREE.Vector3(255/255, 105/255, 105/255); //209, 63, 197
-        let k_cool = kd.clone().multiplyScalar(byab[2]).add(kblue);
-        let k_warm = kd.clone().multiplyScalar(byab[3]).add(kyellow);
-        teapotMaterial = new THREE.ShaderMaterial({
-          uniforms: {
-            lightpos: {type: 'v3', value: new THREE.Vector3()},
-            kcool:{type:'v3', value:k_cool}, //blue new THREE.Vector3(0, 0, 1)
-            kwarm:{type:'v3', value:k_warm}, //yellow
-            opacity: {type: 'f', value: 1.0}
-          },
-          vertexShader: document.getElementById('myVertexShader').textContent,
-          fragmentShader: document.getElementById('myFragmentShader').textContent
-        });
-        let tea_pot_mono = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotMaterial);
-
-        teapots.push(new CTeapot(tea_pot_mono.clone(),intersects[0].point, "teapot"+teapot_num));
-        //teapots.push(single_teapot);
-        //scene.add(teapots[teapot_num]);
-        angles.push(0);
-        console.log("here:"+teapot_num);
-        console.log(teapots);
-        console.log(teapots.length);
-        teapots[teapots.length-1].mesh.position.copy(intersects[0].point);
-        teapot_num += 1;
+        if (intersects_teapot.length > 0) {
+            console.log("touch teapot");
+            console.log(intersects_teapot);
+            for(let j = 0; j < intersects_teapot.length; j++) {
+                for(let i = 0; i < teapots.length; i++) {
+                    if(intersects_teapot[j].object.name == teapots[i].mesh.name){
+                        if(teapots[i].toggle == 1) teapots[i].toggle = 0;
+                        else teapots[i].toggle = 1;
+                    }
+                }
+            }
+        }
+        else {
+            let kblue = new THREE.Vector3(0, 0, byab[0]);
+            let kyellow = new THREE.Vector3(byab[1], byab[1], 0);
+            let kd = new THREE.Vector3(255/255, 105/255, 105/255); //209, 63, 197
+            let k_cool = kd.clone().multiplyScalar(byab[2]).add(kblue);
+            let k_warm = kd.clone().multiplyScalar(byab[3]).add(kyellow);
+            teapotMaterial = new THREE.ShaderMaterial({
+              uniforms: {
+                lightpos: {type: 'v3', value: new THREE.Vector3()},
+                kcool:{type:'v3', value:k_cool}, //blue new THREE.Vector3(0, 0, 1)
+                kwarm:{type:'v3', value:k_warm}, //yellow
+                opacity: {type: 'f', value: 1.0}
+              },
+              vertexShader: document.getElementById('myVertexShader').textContent,
+              fragmentShader: document.getElementById('myFragmentShader').textContent
+            });
+            let tea_pot_mono = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotMaterial);
+            
+            tea_pot_mono.name = "teapot"+teapot_num;
+            intersects[0].point.y += 10;
+            tea_pot_mono.position.copy(intersects[0].point);
+            console.log(tea_pot_mono.position);
+            
+            
+            teapots.push(new CTeapot(tea_pot_mono.clone()));
+            
+            console.log("here:"+teapot_num);
+            console.log(teapots);
+            console.log(teapots.length);
+            teapot_num += 1;
+        }
     }
+    
 
 }
 
 function animate() {
-  if(teapots.length>=1){
-      for(let i = 0; i < teapots.length; i++) {
-          //console.log(teapots[i].mesh.angle);
-          teapots[i].angle += 0.01;
-          teapots[i].mesh.material.uniforms.opacity.value = Math.abs(Math.sin(teapots[i].angle));   
-      }
-  }
   let dt_teapot = clock_teapot.getDelta();
   teapots.forEach (function (b) {b.update (dt_teapot)});
   requestAnimationFrame(animate);
