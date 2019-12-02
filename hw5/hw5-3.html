@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<style>
+body {
+    font-family: Monospace;
+    /*background-image: linear-gradient(to right top, #d7b5c9, #d2b3cf, #cab2d5, #bfb2db, #b1b2e0, #a5b7e5, #99bce8, #8ec1e8, #8ccae6, #90d1e3, #99d8de, #a6deda);*/
+    background-image: linear-gradient(to right top, #565656, #656565, #757575, #858585, #969696, #a4a4a4, #b2b2b2, #c0c0c0, #cfcfcf, #dfdfdf, #efefef, #ffffff);
+    /*background-image: linear-gradient(to right top, #ffbbe2, #f7bce9, #efbeef, #e5c0f5, #dbc2f9, #e8c2f6, #f4c2f1, #ffc3ec, #ffc7d5, #ffd3be, #ffe4b0, #fff8b3);*/
+    margin: 0px;
+    overflow: hidden;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    padding: 5px;
+    text-align: center;
+    font-size: 20px;
+    color: #ffffff
+}
+
+#info a {
+    color: #f00;
+    font-weight: bold;
+    text-decoration: underline;
+    cursor: pointer
+}
+
+.custom-select {
+  position: relative;
+  font-family: Arial;
+}
+
+.custom-select select {
+  display: none; /*hide original SELECT element:*/
+}
+
+.select-selected {
+  background-color: #ffffffDD;
+}
+
+/*style the arrow inside the select element:*/
+.select-selected:after {
+  position: absolute;
+  content: "";
+  top: 14px;
+  right: 10px;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-color: #fff transparent transparent transparent;
+}
+
+/*point the arrow upwards when the select box is open (active):*/
+.select-selected.select-arrow-active:after {
+  border-color: transparent transparent #fff transparent;
+  top: 7px;
+}
+
+/*style the items (options), including the selected item:*/
+.select-items div,.select-selected {
+  color: #555555;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-color: transparent transparent rgba(0, 0, 0, 0.1) transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+/*style items (options):*/
+.select-items {
+  position: relative;
+  background-color: #ffffff88;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 99;
+}
+
+/*hide the items when the select box is closed:*/
+.select-hide {
+  display: none;
+}
+
+.select-items div:hover, .same-as-selected {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+    
+.select-style {
+    border: 0px solid #ccc;
+    width: 150px;
+    height: 30px;
+    background: #ffffffdd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.select-style select {
+    padding: 5px 8px;
+    width: 130%;
+    border: none;
+    height: 30px;
+    box-shadow: none;
+    background: transparent;
+    background-image: none;
+    -webkit-appearance: none;
+}
+
+.select-style select:focus {
+    outline: none;
+}
+</style>
+</head>
+
+<body>
+<div id="info">
+  hw5-3 Gooch shade <br><br>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+<!--teatop geo on line 41-->
+<script id="myVertexShader" type="x-shader/x-vertex">
+    uniform vec3 lightpos;  // world coordinate
+    varying vec3 eyelightdir;
+    varying vec3 eyenormal;
+    
+    varying vec4 eyepos;
+    
+    void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+        eyepos = modelViewMatrix * vec4 (position, 1.0);
+        vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
+        eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
+        eyenormal = normalMatrix * normal;
+    }
+</script>
+
+<script id="myFragmentShader" type="x-shader/x-fragment">
+    varying vec3 eyelightdir;
+    varying vec3 eyenormal;
+    varying vec4 eyepos;
+    
+    uniform vec3 kcool; 
+    uniform vec3 kwarm;
+    //vec3 colorA = vec3(0.149,0.141,0.912);
+    //vec3 colorB = vec3(1.000,0.833,0.224);
+    
+	void main() { 
+        vec3 ne = normalize (eyenormal);
+        vec3 nild = normalize (eyelightdir);
+        
+        float lDotn = dot (ne, nild);    
+        
+        vec3 h = normalize(-normalize (eyepos.xyz) + nild);
+        float shininess = 60.;
+        vec3 specular = pow (dot(ne, h), shininess) *vec3 (1, 1, 1);
+        
+        float k = (1. + lDotn)/2.; //k = (1 + l^ * n^)
+        
+        //mix = x*(1−k) + y*k.
+        gl_FragColor = vec4(mix (kcool, kwarm, k) + specular, 1.0); // built-in: mix
+	}
+</script>
+
+<script>
+var camera, scene, renderer;
+var puck;
+var stableTeapot;
+var teapots = [];
+var teapot_num = 0;
+var raycaster, teapotMaterial;
+var mouse = new THREE.Vector2();
+var pickables = [];
+var scene, renderer, camera;
+var byab = [0.3, 0.6, 0.7, 0.6];
+
+class CTeapot {
+    constructor(pos) {
+        this.pos = new THREE.Vector3();
+    }
+    init(){
+        let kblue = new THREE.Vector3(0, 0, byab[0]);
+        let kyellow = new THREE.Vector3(byab[1], byab[1], 0);
+        let kd = new THREE.Vector3(255/255, 105/255, 105/255); //209, 63, 197
+        let k_cool = kd.clone().multiplyScalar(byab[2]).add(kblue);
+        let k_warm = kd.clone().multiplyScalar(byab[3]).add(kyellow);
+
+        teapotMaterial = new THREE.ShaderMaterial({
+          uniforms: {
+            lightpos: {type: 'v3', value: new THREE.Vector3()},
+            kcool:{type:'v3', value:k_cool}, //blue new THREE.Vector3(0, 0, 1)
+            kwarm:{type:'v3', value:k_warm}, //yellow
+            opacity: {type: 'f', value: 1.0}
+          },
+          vertexShader: document.getElementById('myVertexShader').textContent,
+          fragmentShader: document.getElementById('myFragmentShader').textContent
+        });
+
+        stableTeapot = new THREE.Mesh (new THREE.TeapotBufferGeometry(10), teapotMaterial);
+        return stableTeapot;
+    }
+}
+
+    
+init();
+animate();
+
+function init() {
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true
+  });
+  renderer.setSize(width, height);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+  camera.position.z = 200;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  pointLight = new THREE.PointLight(0xffffff);
+  pointLight.position.set(200, 300, 200);
+  scene.add (new THREE.PointLightHelper (pointLight, 5));
+  scene.add(pointLight);
+  var ambientLight = new THREE.AmbientLight(0x111111);
+  scene.add(ambientLight);
+
+  /////////////////////////////////////////////////////////////////////
+  plane = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0.5,
+    visible: true
+  }));
+  scene.add(plane);
+  plane.position.y -= 10;
+  plane.rotation.x = -Math.PI / 2;
+
+/////////////////////////
+  let platform = new THREE.Mesh (new THREE.BoxGeometry (50,20,50), new THREE.MeshNormalMaterial());
+  scene.add (platform);
+	
+  pickables = [plane, platform];
+  
+  raycaster = new THREE.Raycaster();
+  document.addEventListener('mousedown', onDocumentMouseDown, false);
+}
+
+function onDocumentMouseDown(event) {
+  console.log(teapot_num);
+  console.log(teapots[teapot_num]);
+  let single_teapot = new CTeapot();
+  teapots.push(single_teapot.init());
+  scene.add(teapots[teapot_num]);
+  // PICKING DETAILS: 
+  // convert mouse.xy = [-1,1]^2 (NDC)
+  // unproject (mouse.xy, 1) to a point on the far plane (in world coordinate)
+  // set raycaster (origin, direction)
+  // find intersection objects, (closest first) 
+  // each record as
+  // [ { distance, point, face, faceIndex, object }, ... ]
+  event.preventDefault();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // find intersections
+  raycaster.setFromCamera(mouse, camera);
+  var intersects = raycaster.intersectObjects(pickables);
+  if (intersects.length > 0) {
+    teapots[teapot_num].position.copy(intersects[0].point);
+    teapots[teapot_num].position.y += 10;
+    teapot_num += 1;
+    
+  }
+
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
