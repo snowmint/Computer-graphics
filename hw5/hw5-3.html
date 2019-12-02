@@ -196,7 +196,7 @@ function remove(name) {
 class CTeapot {
     constructor(mesh, pos, name) {
         this.alive = 1;
-        this.angle = 0;
+        this.angle = 1;
         this.mesh = mesh;
         this.mesh.name = name;
         this.pos = pos;
@@ -209,7 +209,7 @@ class CTeapot {
         //console.log(this.mesh.position);
     }
     update() {
-        if(this.angle >= 3 && this.alive == 1) {
+        if(this.angle >= 3.1 && this.alive == 1) {
             remove(this.mesh.name);
             teapots.shift();
             this.alive = 0;
