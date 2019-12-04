@@ -215,7 +215,8 @@ class CTeapot {
     }
     update() {
         if(this.toggle == 1) this.angle += 0.01;
-        this.mesh.material.uniforms.opacity.value = Math.abs(Math.sin(this.angle)); 
+        this.mesh.material.uniforms.opacity.value = Math.abs(Math.sin(this.angle));
+        this.mesh.rotation.set(0, this.angle, 0);
         if(this.angle >= 3.1 && this.alive == 1) {
             for( var i = 0; i < teapots.length; i++){ 
                if ( teapots[i].mesh.name === this.mesh.name) {
