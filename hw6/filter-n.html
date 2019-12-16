@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=Big5">
+<style>
+body {
+	  background-color: #fff;
+	  color: #111;
+	  margin: 0px;
+	  overflow: hidden;
+	  font-family: Monospace;
+	  font-size: 20px;
+	  position: absolute;
+}
+  
+#info {
+	  position: absolute;
+	  top: 0px;
+	  width: 100%;
+	  padding: 5px;
+	  text-align: center;
+	  color: #ffff00
+}
+
+</style>
+<script src="filter-n_files/stats.js"></script></head>
+
+<body> 
+<div id="info">
+  <br> Image Filter + RTT
+</div>
+
+<script src="filter-n_files/three.js"></script>
+<script src="filter-n_files/OrbitControls.js">
+</script>
+<script src="filter-n_files/BufferGeometryUtils.js"></script>
+
+<script id="vs-normalmap" type="x-shader/x-vertex">
+    uniform vec3 lightpos;
+
+	attribute vec4 tangent;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+	  vec4 vWorldpos = modelMatrix * vec4( position, 1.0 ) ;
+	  vec2 myrepeat = vec2 (1.0, 1.0);
+	  vUv = myrepeat*uv;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+	  // TBN in eyespace 
+	  // no need to normalize these varying variable
+	  // as they will be normalized in fragment shader
+	  //
+        vNormal = normalMatrix * normal ;
+		vTangent = normalMatrix * tangent.xyz ;
+		vBitangent = cross( vNormal, vTangent ) ;
+
+		vLL = normalMatrix * (lightpos - vWorldpos.xyz);
+	}
+
+</script>
+	
+<script id="fs-normalmap" type="x-shader/x-vertex">
+	
+	uniform sampler2D tNormal;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+		
+		vec3 normalTex = texture2D (tNormal, vUv).xyz * 2.0 - 1.0;
+		normalTex.xy *= 6.0;    // exaggerate the normal deviation
+		normalTex = normalize( normalTex );
+
+		mat3 tsb = mat3( normalize( vTangent ), normalize( vBitangent ), normalize( vNormal ) );
+		vec3 finalNormal = tsb * normalTex;
+		float ndotl = dot (normalize (vLL), normalize (finalNormal));
+		gl_FragColor = vec4( vec3(ndotl), 1 );
+
+	}
+</script>
+<script>
+javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+
+var scene, renderer, camera;
+var shaderMaterial;
+var angle = 0;
+
+init();
+animate();
+
+function init() {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(width, height);
+  document.body.appendChild(renderer.domElement);
+  renderer.setClearColor(0x888888);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+  camera.position.y = 80;
+  camera.position.z = 400;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  light = new THREE.PointLight ();
+  scene.add (light);
+  scene.add (new THREE.PointLightHelper (light,5));
+
+  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+  scene.add(gridXZ);
+
+  window.addEventListener('resize', onWindowResize, false);
+  function onWindowResize() {
+  	camera.aspect = window.innerWidth / window.innerHeight;
+  	camera.updateProjectionMatrix();
+  	renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  //
+  
+  ////////////////////////////////////////////////////////////////////////
+  var geometry = new THREE.PlaneBufferGeometry( 50,50 );
+  THREE.BufferGeometryUtils.computeTangents(geometry);
+
+  let loader = new THREE.TextureLoader();
+  loader.crossOrigin = '';
+  let texture = loader.load('https://i.imgur.com/nv73w3f.jpg'); // normal map
+
+  var uniforms = {
+    imageSize: {
+      type: 'v2',
+      value: 512
+    },
+    tNormal: {
+      type: 't',
+      value: texture
+    },
+    lightpos: {
+      type: 'v3',
+      value: new THREE.Vector3()
+    }
+      
+  };
+  
+  var vertShader = document.getElementById('vs-normalmap').textContent;
+  var fragShader = document.getElementById('fs-normalmap').textContent;
+  
+  shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: vertShader,
+    fragmentShader: fragShader
+  });
+  let mesh = new THREE.Mesh (geometry, shaderMaterial)
+  scene.add (mesh);
+  mesh.position.y = 25;
+  
+
+  ///////////////////////////////////////////////////////////
+
+/*
+   // to get texture image size:
+   // https://stackoverflow.com/questions/49111431/how-to-get-texture-dimensions-with-three-js
+  
+  let loader = new THREE.TextureLoader();
+  loader.crossOrigin = '';
+  let olympus = 'https://i.imgur.com/A7iqfXD.png';
+  let gakki = 'https://i.imgur.com/NHXZYjr.png?2';  
+  let texture = loader.load('https://i.imgur.com/nv73w3f.jpg', function (tex) {
+  	console.log (tex.image.width + ', ' + tex.image.height);
+  	renderTarget.setSize (tex.image.width, tex.image.width);
+  	shaderMaterial.uniforms.imageSize.value = tex.image.width;
+  	shaderMaterial.uniforms.texture.value= tex;
+  });  
+*/
+}
+
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  
+  angle += 0.01;
+  light.position.set (50*Math.cos(angle), 20, 50*Math.sin(angle));
+  shaderMaterial.uniforms.lightpos.value.copy (light.position);
+
+  renderer.render(scene, camera);
+      
+}
+
+
+</script><canvas width="1536" height="790" style="width: 1536px; height: 790px;" tabindex="0"></canvas>
+
+
+<div style="position: fixed; top: 0px; left: 0px; cursor: pointer; opacity: 0.9; z-index: 10000;"><canvas width="80" height="48" style="width: 80px; height: 48px; display: block;"></canvas><canvas width="80" height="48" style="width: 80px; height: 48px; display: none;"></canvas></div></body></html>
