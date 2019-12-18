@@ -147,8 +147,9 @@
         } else {
             nn = 0.2;
         }
-        diffuse = vec3(199.0/255.0 , 242.0/255.0 , 255.0/255.0);//light blue
+        //diffuse = vec3(199.0/255.0 , 242.0/255.0 , 255.0/255.0);//light blue
         //diffuse = vec3(255.0/255.0 , 246.0/255.0 , 199.0/255.0); //light yellow
+        diffuse = vec3(255.0/255.0 , 171.0/255.0 , 171.0/255.0);//light red
         gl_FragColor = vec4 (diffuse*nn, 1.0);
     }
 </script>
@@ -315,7 +316,7 @@ function init() {
     uniforms: {
         lightpos: {
             type: 'v3',
-            value: new THREE.Vector3(-20, 50, 0)
+            value: new THREE.Vector3(-30, 50, 60)
         }
     },
     vertexShader: document.getElementById('myVertexShader').textContent,
@@ -365,7 +366,7 @@ function init() {
     uniforms: {
         lightpos: {
             type: 'v3',
-            value: new THREE.Vector3(-20, 50, 0)
+            value: new THREE.Vector3(-20, 60, 50)
         }
     },
     vertexShader: document.getElementById('myVertexShader').textContent,
