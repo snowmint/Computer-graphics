@@ -70,8 +70,8 @@
   uniform int imageSize;
   varying vec2 vUv; 
   void main() { 
-    float step_w = 0.5/float(imageSize); 
-    float step_h = 0.5/float(imageSize); 
+    float step_w = 0.3/float(imageSize); 
+    float step_h = 0.3/float(imageSize); 
 	// Laplace filter
 	float kernel[9]; 
     kernel[0] = kernel[2] = kernel[6] = kernel[8] = 0.0/1.0; 
@@ -211,7 +211,7 @@ var walls, wall_entrys;
 var desk_things, desk_entrys;
 var angle = 0, sign = 1;
 var byab = [0.3, 0.6, 0.7, 0.6];
-    
+var scene1, camera1;
 var sphere_material, wallMeterial, wallMeterial2, DeskMeterial, penholder_wall_Meterial, wall_yuka_Meterial;
 var tea_front_Material, tea_frontup_Material, tea_right_Material, tea_rightup_Material, tea_back_Material, tea_backup_Material, tea_left_Material, tea_leftup_Material, tea_bottom_Material;
 
@@ -375,10 +375,12 @@ function init() {
   
   var pointLight = new THREE.PointLight(0xffffff);
   pointLight.position.set(0, 300, 200);
-  sceneRegular.add(pointLight);
+  //sceneRegular.add(pointLight);
 
   var ambientLight = new THREE.AmbientLight(0x555555);
-  sceneRegular.add(ambientLight);
+  //sceneRegular.add(ambientLight);
+    
+  
 
 //////////////////////
   renderTarget_whole = new THREE.WebGLRenderTarget( 512,512);
@@ -400,14 +402,15 @@ function init() {
    //scene.add (new THREE.GridHelper (200,20,'red','white'));
     
     /////////////////////////////////////////
+    sceneGrey = new THREE.Scene();
     ambient = new THREE.AmbientLight(0x888888);
-    scene.add(ambient);
+    //sceneGrey.add(ambient);
 
     directionalLight = new THREE.PointLight(0xAAAAAA);
     directionalLight.position.set(1, 100, 1);//.normalize();
-    scene.add(directionalLight);
+    //sceneGrey.add(directionalLight);
     // model
-    scene.add(buildModel());
+    sceneGrey.add(buildModel());
     
     var onProgress = function(xhr) {
         if (xhr.lengthComputable) {
@@ -427,7 +430,7 @@ function init() {
             theObjectAll = unitize (object, -22, 21, -10, 20);
             //theObjectAll.children[0].castShadow = true;
             //theObjectAll.children[0].receiveShadow = true;
-            scene.add (theObjectAll);				
+            sceneGrey.add (theObjectAll);				
             object.traverse (
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
@@ -456,7 +459,7 @@ function init() {
             theObjectChair = unitize (object, 10, -9.5, 40, 30);
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = -Math.PI/4;
-            scene.add (theObjectChair);
+            sceneGrey.add (theObjectChair);
             object.traverse (
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
@@ -488,7 +491,7 @@ function init() {
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = -Math.PI/4;
             theObjectChair.children[0].rotation.y = -Math.PI/6;
-            scene.add (theObjectChair);
+            sceneGrey.add (theObjectChair);
             object.traverse (
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
@@ -520,7 +523,7 @@ function init() {
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = Math.PI/2.7;
             theObjectChair.children[0].rotation.y = Math.PI/2.5;
-            scene.add (theObjectChair);
+            sceneGrey.add (theObjectChair);
             object.traverse (
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
@@ -576,7 +579,7 @@ function init() {
         if (Rotation[i] == 2) thisMesh.position.set(PosOfx[i], -2, PosOfz[i], Rotation[i]);
         else thisMesh.position.set(PosOfx[i], 23.5, PosOfz[i], Rotation[i]);
         wall_entrys.push(thisMesh);
-        scene.add(thisMesh)
+        sceneGrey.add(thisMesh)
     }
 
     //Desk
@@ -610,7 +613,7 @@ function init() {
         else thisMesh.position.set(PosOfx[i], 9, PosOfz[i], Rotation[i]);
 
         desk_entrys.push(thisMesh);
-        scene.add(thisMesh)
+        sceneGrey.add(thisMesh)
     }
 
     var sphere_geometry = new THREE.SphereGeometry( 2, 32, 32 );
@@ -618,12 +621,12 @@ function init() {
     sphere = new THREE.Mesh( sphere_geometry, sphere_material );
     //sphere.material.emissive = new THREE.Color('yellow');
     sphere.position.set(-19, 38, -10);
-    scene.add( sphere );
+    sceneGrey.add( sphere );
 
     //light
     desk_light = new THREE.SpotLight(0xffffff, 1, 39);
     desk_light.position.set(-18, 36, -10);
-    scene.add(desk_light);
+    sceneGrey.add(desk_light);
 
     /////////////////////////////////////////////////
 
@@ -671,9 +674,45 @@ function init() {
         else thisMesh.position.set(pen_PosOfx[i], 23, pen_PosOfz[i]);
 
         pen_holder_entrys.push(thisMesh);
-        scene.add(thisMesh);
+        sceneGrey.add(thisMesh);
     }
+    ////////////////////////////////////////////////////////////////
+    
+    
+    width = window.innerWidth;
+    height = window.innerHeight;
+    renderTarget_Grey = new THREE.WebGLRenderTarget (width, height);  // full-size RT
+    
+    scene1 = new THREE.Scene();
+    camera1 = new THREE.OrthographicCamera (0, width, height, 0,-100,1000);
+    
+    var uniforms2 = {
+        imageSize: {
+          type: 'v2',
+          value: new THREE.Vector2(width, height)
+        },
+        texture: {
+          type: 't',
+          value: renderTarget_Grey.texture
+        } ,
+    };
 
+    var vertShader = document.getElementById('myVertexShader-mono').textContent;
+    var fragShader = document.getElementById('myFragmentShader-mono').textContent;
+    shaderMaterial = new THREE.ShaderMaterial({
+        uniforms: uniforms2,
+        vertexShader: vertShader,
+        fragmentShader: fragShader,
+
+        depthTest: false,
+        depthWrite: false
+    });
+    
+    var plane0 = new THREE.Mesh (new THREE.PlaneGeometry(width, height), shaderMaterial);
+    scene1.add (plane0);
+    plane0.position.set (width/2, height/2, 0);
+    
+    
 }
 
 function onWindowResize() {
@@ -684,49 +723,95 @@ function onWindowResize() {
 
 function animate() {
 
-  requestAnimationFrame(animate);
-  
-  var py = new THREE.Vector3(0, 1, 0);
-  var pz = new THREE.Vector3(0, 0, 1);
-  var point = camera.position.clone().sub(subject.position).projectOnPlane(py);
-  angle = point.angleTo(pz);
-  var test = new THREE.Vector3();
-  
-  if(test.crossVectors(pz, point).dot(py) > 0)
-      angle = -angle;
-  
-  subject.rotation.y = angle;
-  subjectClone.rotation.y = angle;
-  
-  material_shh.uniforms.imageSize.value = 60;
-  // this value can alter the width of silhouette !!
-  // 1024: original width
-  // 512, 256, 128, ...: wider silhouette
-  
-  
-  // scene0: torusKnot with shaderMaterial (draw eyeNormal)
-  renderer.setRenderTarget (renderTarget);
-  renderer.setClearColor (0x000000);
-  renderer.clear();
-  renderer.render (scene0, camera0);  // produce eyeNormal plot of subject
-  
-  // sceneRTT: fullQuad + filter (discard "near black" fragments)
-  renderer.setRenderTarget (renderTarget_whole);
-  renderer.setClearColor (0xffff00);  // yellow "magic" background ... to be cutout
-  renderer.clear()
-  renderer.render (sceneRTT, cameraRTT);  // produce outline
+    requestAnimationFrame(animate);
 
-  // overlay the lit torusKnot
-  renderer.render(sceneRegular, camera0); // camera0: the same as eyeNormal plot
+    var py = new THREE.Vector3(0, 1, 0);
+    var pz = new THREE.Vector3(0, 0, 1);
+    var point = camera.position.clone().sub(subject.position).projectOnPlane(py);
+    angle = point.angleTo(pz);
+    var test = new THREE.Vector3();
 
-  ///////// final texture completed (except boundary removal)  
-  planeXX.lookAt (camera.position.x, 25, camera.position.z);
-  
-  renderer.setRenderTarget (null);
-  renderer.setClearColor (0x000000);
-  renderer.clear();
-  renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
+    if(test.crossVectors(pz, point).dot(py) > 0)
+        angle = -angle;
 
+    subject.rotation.y = angle;
+    subjectClone.rotation.y = angle;
+
+    material_shh.uniforms.imageSize.value = 60;
+    // this value can alter the width of silhouette !!
+    // 1024: original width
+    // 512, 256, 128, ...: wider silhouette
+    
+    
+    renderer.setRenderTarget (renderTarget_Grey);
+    renderer.clear();  // clear the buffers of render target 
+    sphere_material.colorWrite = true;
+    wallMeterial.colorWrite = true;
+    wallMeterial2.colorWrite = true;
+    DeskMeterial.colorWrite = true;
+    penholder_wall_Meterial.colorWrite = true;
+    tea_front_Material.colorWrite = true;
+    tea_frontup_Material.colorWrite = true;
+    tea_right_Material.colorWrite = true;
+    tea_rightup_Material.colorWrite = true;
+    tea_back_Material.colorWrite = true;
+    tea_backup_Material.colorWrite = true;
+    tea_left_Material.colorWrite = true;
+    tea_leftup_Material.colorWrite = true;
+    tea_bottom_Material.colorWrite = true;
+    wall_yuka_Meterial.colorWrite = true;
+    renderer.render(sceneGrey, camera);
+
+    // switch to screen output    
+    renderer.setRenderTarget (null);
+    renderer.clearColor();  // clear screen buffers
+    renderer.render(scene1, camera1);
+
+    // set up blockers from sceneGrey (colorWrite is disabled)
+    sphere_material.colorWrite = false;
+    wallMeterial.colorWrite = false;
+    wallMeterial2.colorWrite = false;
+    DeskMeterial.colorWrite = false;
+    penholder_wall_Meterial.colorWrite = false;
+    tea_front_Material.colorWrite = false;
+    tea_frontup_Material.colorWrite = false;
+    tea_right_Material.colorWrite = false;
+    tea_rightup_Material.colorWrite = false;
+    tea_back_Material.colorWrite = false;
+    tea_backup_Material.colorWrite = false;
+    tea_left_Material.colorWrite = false;
+    tea_leftup_Material.colorWrite = false;
+    tea_bottom_Material.colorWrite = false;
+    wall_yuka_Meterial.colorWrite = false;
+    renderer.render (sceneGrey, camera);
+    renderer.render(scene, camera);
+    
+    
+    // scene0: torusKnot with shaderMaterial (draw eyeNormal)
+    renderer.setRenderTarget (renderTarget);
+    renderer.setClearColor (0x000000);
+    renderer.clear();
+    renderer.render (scene0, camera0);  // produce eyeNormal plot of subject
+
+    // sceneRTT: fullQuad + filter (discard "near black" fragments)
+    renderer.setRenderTarget (renderTarget_whole);
+    renderer.setClearColor (0xffff00);  // yellow "magic" background ... to be cutout
+    renderer.clear();
+    renderer.render (sceneRTT, cameraRTT);  // produce outline
+
+
+    renderer.render(sceneRegular, camera0); // camera0: the same as eyeNormal plot
+
+    ///////// final texture completed (except boundary removal)  
+    planeXX.lookAt (camera.position.x, 25, camera.position.z);
+
+    renderer.setRenderTarget (renderTarget);
+    renderer.setClearColor (0x000000);
+    renderer.clear();
+//    renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
+
+    
+   
 }
 function buildModel(){
     let geometry = new THREE.Geometry();
