@@ -121,14 +121,27 @@
     varying float ndotl;
     varying vec3 lightdir;
     varying vec3 eyenorm;
+    varying vec3 new_light;
 
     void main() {
         gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
 
-        //vec4 worldpos = modelMatrix * vec4 (position, 1.0);
+        vec4 worldpos = modelMatrix * vec4 (position, 1.0);
         //ndotl = dot (normalize(lightpos.xyz - worldpos.xyz), normal);
+        //vec3 ori_pos = vec3(-20.0, 50.0, -50.0);
+        
         vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
-        vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
+        float dis_a = 1.0;
+        float dis_b = 1.0;
+        //ndotl = dot (normalize(lightpos.xyz-eyepos.xyz), normal);
+        ndotl = dot (normalize(lightpos.xyz-eyepos.xyz), normalize(normal));
+        
+        float cos_test = ndotl/(dis_a*dis_b);
+        
+        new_light = ((3.0*cos_test))*lightpos;
+        //vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
+        vec4 lighteye = viewMatrix * vec4 (new_light, 1.0);
+        
         lightdir = lighteye.xyz - eyepos.xyz;
         eyenorm = normalMatrix * normal;
     }
@@ -275,7 +288,7 @@ function unitize (object, x, y, z,targetSize) {
     }
 }
 function init() {
-
+    
   renderer = new THREE.WebGLRenderer({
     antialias: true
   });
@@ -304,28 +317,10 @@ function init() {
   // camera0: ortho camera
   
   scene0 = new THREE.Scene();
-  let kblue = new THREE.Vector3(0, 0, byab[0]);
-  let kyellow = new THREE.Vector3(byab[1], byab[1], 0);
-  let kd = new THREE.Vector3(255/255, 105/255, 105/255); //209, 63, 197
-  let k_cool = kd.clone().multiplyScalar(byab[2]).add(kblue);
-  let k_warm = kd.clone().multiplyScalar(byab[3]).add(kyellow);
-  var vertShader = document.getElementById('myVertexShader-mono').textContent;
-  var fragShader = document.getElementById('myFragmentShader-mono').textContent;
-
-  teapotMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-        lightpos: {
-            type: 'v3',
-            value: new THREE.Vector3(-30, 50, 60)
-        }
-    },
-    vertexShader: document.getElementById('myVertexShader').textContent,
-    fragmentShader: document.getElementById('myFragmentShader').textContent
-  });
-  //tea_pot_mono = new THREE.Mesh (new THREE.TeapotBufferGeometry(3), teapotMaterial);
-  //subject = new THREE.Mesh (new THREE.TorusKnotGeometry( 10, 3, 100, 16 ),material_shh_normal);
-  subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(20),material_shh_normal);
-  subject.position.y = 5;
+  subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(10),material_shh_normal);
+  subject.position.x = 0;
+  subject.position.z = 0;
+  subject.position.y = -5;
   scene0.add (subject);
   camera0 = new THREE.OrthographicCamera (-100,100,100,-100,-1000,1000);
     
@@ -366,7 +361,7 @@ function init() {
     uniforms: {
         lightpos: {
             type: 'v3',
-            value: new THREE.Vector3(-20, 60, 50)
+            value: new THREE.Vector3(-30, 60, 50)
         }
     },
     vertexShader: document.getElementById('myVertexShader').textContent,
@@ -376,10 +371,10 @@ function init() {
   
   var pointLight = new THREE.PointLight(0xffffff);
   pointLight.position.set(0, 300, 200);
-  //sceneRegular.add(pointLight);
+  sceneRegular.add(pointLight);
 
   var ambientLight = new THREE.AmbientLight(0x555555);
-  //sceneRegular.add(ambientLight);
+  sceneRegular.add(ambientLight);
     
   
 
@@ -404,6 +399,9 @@ function init() {
     
     /////////////////////////////////////////
     sceneGrey = new THREE.Scene();
+    grey_zchange = 10;
+    grey_xchange = 6;
+    
     ambient = new THREE.AmbientLight(0x888888);
     //sceneGrey.add(ambient);
 
@@ -428,9 +426,9 @@ function init() {
         objLoader.setMaterials(materials);
         objLoader.setPath('desk_lamp/');
         objLoader.load('Desk_lamp.obj', function(object) {
-            theObjectAll = unitize (object, -22, 21, -10, 20);
-            //theObjectAll.children[0].castShadow = true;
-            //theObjectAll.children[0].receiveShadow = true;
+            theObjectAll = unitize (object, -22+grey_xchange, 21, -5+grey_zchange, 20);
+            theObjectAll.children[0].castShadow = true;
+            theObjectAll.children[0].receiveShadow = true;
             sceneGrey.add (theObjectAll);				
             object.traverse (
                 function(mesh) {
@@ -457,7 +455,7 @@ function init() {
         objLoader2.setMaterials(materials);
         objLoader2.setPath('woodchair/');
         objLoader2.load('WoodChair.obj', function(object) {
-            theObjectChair = unitize (object, 10, -9.5, 40, 30);
+            theObjectChair = unitize (object, 10+grey_xchange, -9.5, 40+grey_zchange, 30);
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = -Math.PI/4;
             sceneGrey.add (theObjectChair);
@@ -465,8 +463,8 @@ function init() {
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
                         mesh.material.side = THREE.DoubleSide;
-                        //mesh.castShadow = true;
-                        //mesh.receiveShadow = true;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
                     }
                 }
             );
@@ -488,7 +486,7 @@ function init() {
         objLoader3.setMaterials(materials);
         objLoader3.setPath('pencil/');
         objLoader3.load('pencil.obj', function(object) {
-            theObjectChair = unitize (object, 12.8, 24.5, -12, 8);
+            theObjectChair = unitize (object, 12.8+grey_xchange, 24.5, -12+grey_zchange, 8);
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = -Math.PI/4;
             theObjectChair.children[0].rotation.y = -Math.PI/6;
@@ -497,8 +495,8 @@ function init() {
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
                         mesh.material.side = THREE.DoubleSide;
-                        //mesh.castShadow = true;
-                        //mesh.receiveShadow = true;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
                     }
                 }
             );
@@ -520,7 +518,7 @@ function init() {
         objLoader4.setMaterials(materials);
         objLoader4.setPath('pen/');
         objLoader4.load('Pen_01.obj', function(object) {
-            theObjectChair = unitize (object, 15, 20, -12, 8);
+            theObjectChair = unitize (object, 15+grey_xchange, 20, -12+grey_zchange, 8);
             theObjectChair.children[0].rotation.x = -Math.PI/2;
             theObjectChair.children[0].rotation.z = Math.PI/2.7;
             theObjectChair.children[0].rotation.y = Math.PI/2.5;
@@ -529,8 +527,8 @@ function init() {
                 function(mesh) {
                     if (mesh instanceof THREE.Mesh) {
                         mesh.material.side = THREE.DoubleSide;
-                        //mesh.castShadow = true;
-                        //mesh.receiveShadow = true;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
                     }
                 }
             );
@@ -577,8 +575,9 @@ function init() {
             thisMesh.rotation.z = -Math.PI / 2;
             thisMesh.rotation.x = Math.PI / 2;
         }
-        if (Rotation[i] == 2) thisMesh.position.set(PosOfx[i], -2, PosOfz[i], Rotation[i]);
-        else thisMesh.position.set(PosOfx[i], 23.5, PosOfz[i], Rotation[i]);
+        if (Rotation[i] == 2) thisMesh.position.set(PosOfx[i]+grey_xchange, -2, PosOfz[i]+grey_zchange, Rotation[i]);
+        else thisMesh.position.set(PosOfx[i]+grey_xchange, 23.5, PosOfz[i]+grey_zchange, Rotation[i]);
+        
         wall_entrys.push(thisMesh);
         sceneGrey.add(thisMesh)
     }
@@ -610,8 +609,8 @@ function init() {
         if (i == 0) thisMesh.rotation.x = -Math.PI / 2;
         else thisMesh.rotation.x = -Math.PI / 2;
 
-        if(Rotation[i] == 2) thisMesh.position.set(PosOfx[i], 20, PosOfz[i], Rotation[i]);
-        else thisMesh.position.set(PosOfx[i], 9, PosOfz[i], Rotation[i]);
+        if(Rotation[i] == 2) thisMesh.position.set(PosOfx[i]+grey_xchange, 20, PosOfz[i]+grey_zchange, Rotation[i]);
+        else thisMesh.position.set(PosOfx[i]+grey_xchange, 9, PosOfz[i]+grey_zchange, Rotation[i]);
 
         desk_entrys.push(thisMesh);
         sceneGrey.add(thisMesh)
@@ -621,12 +620,12 @@ function init() {
     sphere_material = new THREE.MeshBasicMaterial({color: 0xffff00} );// {color: 0xffff00} 
     sphere = new THREE.Mesh( sphere_geometry, sphere_material );
     //sphere.material.emissive = new THREE.Color('yellow');
-    sphere.position.set(-19, 38, -10);
+    sphere.position.set(-19+grey_xchange, 38, -5+grey_zchange);
     sceneGrey.add( sphere );
 
     //light
     desk_light = new THREE.SpotLight(0xffffff, 1, 39);
-    desk_light.position.set(-18, 36, -10);
+    desk_light.position.set(-18, 36, -10+grey_zchange);
     sceneGrey.add(desk_light);
 
     /////////////////////////////////////////////////
@@ -650,7 +649,7 @@ function init() {
     let pen_holder_entry_len = new THREE.Mesh(penholder_wall_length, penholder_wall_Meterial);
     let pen_holder_entry_wid = new THREE.Mesh(penholder_wall_width, penholder_wall_Meterial);
     let pen_holder_entry_bot = new THREE.Mesh(penholder_wall_bottom, penholder_wall_Meterial);
-
+    
     pen_holder = [];
     pen_holder_entrys = []
     let pen_PosOfx = [15, 18, 15, 12, 15],
@@ -661,6 +660,7 @@ function init() {
         let pen_holder_wall = new PenHolder();
         pen_holder.push(pen_holder_wall);
         let thisMesh = new THREE.Mesh();
+        
         if (pen_Rotation[i] == 0) thisMesh = pen_holder_entry_len.clone();
         else if (pen_Rotation[i] == 1) thisMesh = pen_holder_entry_wid.clone();
         else thisMesh = pen_holder_entry_bot.clone();
@@ -671,8 +671,8 @@ function init() {
             thisMesh.rotation.x = Math.PI / 2;
         }
 
-        if (pen_Rotation[i] == 2) thisMesh.position.set(pen_PosOfx[i], 21, pen_PosOfz[i]);
-        else thisMesh.position.set(pen_PosOfx[i], 23, pen_PosOfz[i]);
+        if (pen_Rotation[i] == 2) thisMesh.position.set(pen_PosOfx[i]+grey_xchange, 21, pen_PosOfz[i]+grey_zchange);
+        else thisMesh.position.set(pen_PosOfx[i]+grey_xchange, 23, pen_PosOfz[i]+grey_zchange);
 
         pen_holder_entrys.push(thisMesh);
         sceneGrey.add(thisMesh);
@@ -723,7 +723,7 @@ function onWindowResize() {
 }
 
 function animate() {
-
+    
     requestAnimationFrame(animate);
 
     var py = new THREE.Vector3(0, 1, 0);
@@ -809,14 +809,14 @@ function animate() {
     renderer.setRenderTarget (renderTarget);
     renderer.setClearColor (0x000000);
     renderer.clear();
-//    renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
+    renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
 
     
    
 }
 function buildModel(){
     let geometry = new THREE.Geometry();
-    let pos_y = 21, pos_x = 25, pos_z = -10;
+    let pos_y = 21, pos_x = 25+grey_xchange, pos_z = -10+grey_zchange;
     geometry.vertices.push(new THREE.Vector3(-2+pos_x, 0+pos_y, 2+pos_z));//0
     geometry.vertices.push(new THREE.Vector3(2+pos_x, 0+pos_y, 2+pos_z));//1
     geometry.vertices.push(new THREE.Vector3(2+pos_x, 9+pos_y, 2+pos_z));//2
