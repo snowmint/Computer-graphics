@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+	body {
+	  background-color: #fff;
+	  color: #111;
+	  margin: 0px;
+	  overflow: hidden;
+	  font-family: Monospace;
+	  font-size: 20px;
+	  position: absolute;
+	}
+  
+	#info {
+	  position: absolute;
+	  top: 0px;
+	  width: 100%;
+	  padding: 5px;
+	  text-align: center;
+	  color: #ffffff
+	}
+
+
+</style>
+</head>
+<script src="./hw6-2_files/stats.min.js.&#19979;&#36617;"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/108/three.min.js"></script>
+<script src="https://threejs.org/build/three.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://threejs.org/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/geometries/TeapotBufferGeometry.js"></script>
+<script src="https://rawgithub.com/mrdoob/three.js/r104/examples/js/utils/BufferGeometryUtils.js"></script>
+
+
+<body> 
+<div id="info">
+  <br> Silhouette
+  <br> (eyeNormalPlot + Laplace filter)
+</div>
+
+
+<!-- shader for eyeNormal Plot -->
+<script id="vsNormal" type="x-shader/x-vertex">
+  varying vec3 vNormal;
+  void main() { 
+  	gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+    vNormal = normalMatrix*normal;
+  }
+</script>
+<script id="fsNormal" type="x-shader/x-fragment">
+  varying vec3 vNormal; // [-1,1]^3
+  void main() {    
+  	vec3 color = (normalize(vNormal)+1.0)/2.; // [0,1]^3
+  	gl_FragColor = vec4 (color,1);
+  }
+</script>
+
+<!-- shader for Lapace filter -->
+<!-- with background discard  -->
+
+<script id="vsFilter" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+    gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+    vUv = uv; 
+  }
+</script>
+<script id="fsFilter" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  uniform int imageSize;
+  varying vec2 vUv; 
+  void main() { 
+    float step_w = 0.3/float(imageSize); 
+    float step_h = 0.3/float(imageSize); 
+	// Laplace filter
+	float kernel[9]; 
+    kernel[0] = kernel[2] = kernel[6] = kernel[8] = 0.0/1.0; 
+    kernel[1] = kernel[3] = kernel[5] = kernel[7] = 1.0/1.0; 
+    kernel[4] = -4.0/1.0; 
+    vec2 offset[9]; 
+    offset[0]=vec2(-step_w, -step_h); 
+    offset[1]=vec2(0.0, -step_h); offset[2]= vec2(step_w, -step_h), 
+    offset[3]=vec2(-step_w, 0.0), offset[4]=vec2(0.0, 0.0), offset[5]=vec2(step_w, 0.0), 
+    offset[6]=vec2(-step_w, step_h), offset[7]=vec2(0.0, step_h), offset[8]=vec2(step_w, step_h); 
+  
+    vec3 sum= vec3(0.0); 
+ 	for (int i=0 ; i < 9; i++) { 
+       vec3 tmp=texture2D (texture, vUv+offset[i]).rgb; 
+       sum += tmp*kernel[i]; 
+    }
+
+    if ((sum.r+sum.g+sum.b)/3.0 < 0.1) // if close to (0,0,0)
+  	   discard;
+    else 
+  	   gl_FragColor = vec4 (0,0,0, 1.0); 
+  }
+</script>
+
+<!-- shader to cutout "background" -->
+<script id="vsCut" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+    gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+    vUv = uv; 
+  }
+</script>
+<script id="fsCut" type="x-shader/x-vertex">
+  uniform sampler2D texture; 
+  varying vec2 vUv;
+  void main() {
+  	vec3 color = texture2D (texture, vUv).rgb;
+  	if (color.r > 0.50 && color.g > 0.50 && color.b < 0.25)  // close to (1,1,0)
+  	   discard;
+  	else
+  		gl_FragColor = vec4 (color, 1);
+  }
+</script>
+
+<script id="myVertexShader" type="x-shader/x-vertex">
+    uniform vec3 lightpos;
+    varying float ndotl;
+    varying vec3 lightdir;
+    varying vec3 eyenorm;
+    varying vec3 new_light;
+
+    void main() {
+        gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+
+        vec4 worldpos = modelMatrix * vec4 (position, 1.0);
+        //ndotl = dot (normalize(lightpos.xyz - worldpos.xyz), normal);
+        //vec3 ori_pos = vec3(-20.0, 50.0, -50.0);
+        
+        vec4 eyepos = modelViewMatrix * vec4 (position, 1.0);
+        float dis_a = 1.0;
+        float dis_b = 1.0;
+        //ndotl = dot (normalize(lightpos.xyz-eyepos.xyz), normal);
+        ndotl = dot (normalize(lightpos.xyz-eyepos.xyz), normalize(normal));
+        
+        float cos_test = ndotl/(dis_a*dis_b);
+        
+        new_light = ((3.0*cos_test))*lightpos;
+        //vec4 lighteye = viewMatrix * vec4 (lightpos, 1.0);
+        vec4 lighteye = viewMatrix * vec4 (new_light, 1.0);
+        
+        lightdir = lighteye.xyz - eyepos.xyz;
+        eyenorm = normalMatrix * normal;
+    }
+</script>
+<script id="myFragmentShader" type="x-shader/x-fragment">
+    varying float ndotl;
+    varying vec3 lightdir;
+    varying vec3 eyenorm;
+    vec3 diffuse;
+    void main() {
+        float nn = dot (normalize(lightdir), normalize(eyenorm));
+        if (nn > 0.8) {
+            nn= 1.0;
+        } else if (nn > 0.6) {
+            nn = 0.6;
+        } else {
+            nn = 0.2;
+        }
+        //diffuse = vec3(199.0/255.0 , 242.0/255.0 , 255.0/255.0);//light blue
+        //diffuse = vec3(255.0/255.0 , 246.0/255.0 , 199.0/255.0); //light yellow
+        diffuse = vec3(255.0/255.0 , 171.0/255.0 , 171.0/255.0);//light red
+        gl_FragColor = vec4 (diffuse*nn, 1.0);
+    }
+</script>
+<script id="myVertexShader-mono" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+     gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+     vUv = uv; 
+  }
+</script>
+<script id="myFragmentShader-mono" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  uniform vec2 imageSize;
+  varying vec2 vUv; 
+  //float step_w = 1.0/imageSize.x; 
+  //float step_h = 1.0/imageSize.y; 
+
+  vec3 rgb2hsv(vec3 c) {
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+  }
+  vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+  }
+
+  void main() { 
+    vec3 color = texture2D (texture, vUv).rgb;
+    vec3 hh = rgb2hsv (color);
+    hh.y = 0.0;
+    vec3 cc = hsv2rgb (hh);
+    gl_FragColor = vec4 (cc, 1.0); 
+  }
+</script>
+<script id="vs-sobel" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+     gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+     vUv = uv; 
+  }
+</script>
+<script id="fs-sobel" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  uniform vec2 imageSize;
+  varying vec2 vUv; 
+  float step_w = 1.0/imageSize.x; 
+  float step_h = 1.0/imageSize.y; 
+  void main() { 
+  	float kernel[9];
+  	 
+    vec2 offset[9]; 
+  	offset[0]=vec2(-step_w, -step_h); 
+  	offset[1]=vec2(0.0, -step_h); offset[2]= vec2(step_w, -step_h), 
+  	offset[3]=vec2(-step_w, 0.0), offset[4]=vec2(0.0, 0.0), offset[5]=vec2(step_w, 0.0), 
+  	offset[6]=vec2(-step_w, step_h), offset[7]=vec2(0.0, step_h), offset[8]=vec2(step_w, step_h); 
+  	
+	// sobel filter - Gx
+	for (int i = 0; i < 9; i++) kernel[i]=0.0; 
+	kernel[0] = -1.0; kernel[2] = 1.0;
+	kernel[3] = -2.0; kernel[5] =  2.0;
+	kernel[6] = -1.0; kernel[8] = 1.0;
+
+  	vec3 sumX= vec3(0.0); 
+  	for (int i=0 ; i < 9; i++) { 
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb; 
+      	sumX += tmp*kernel[i]; 
+    }
+    
+	// sobel filter - Gy
+	for (int i = 0; i < 9; i++) kernel[i]=0.0; 
+	kernel[6] = -1.0; kernel[7] = -2.0; kernel[8] = -1.0;
+	kernel[0] = 1.0; kernel[1] = 2.0; kernel[2] = 1.0;
+
+  	vec3 sumY= vec3(0.0); 
+  	for (int i=0 ; i < 9; i++) { 
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb; 
+      	sumY += tmp*kernel[i]; 
+    }
+	vec3 delX = vec3 (1, 0, sumX);
+	vec3 delY = vec3 (0, 1, sumY);
+	vec3 n = normalize (cross (delX, delY));
+	
+	vec3 encode = (n + vec3 (1))/2.0;
+     
+  	gl_FragColor = vec4 (encode, 1.0); 
+  }
+
+</script>
+
+<script id="vs-texSwap" type="x-shader/x-vertex">
+  uniform int which; // 0, 1
+  varying vec2 vUv;
+  
+  ////
+  uniform vec3 lightpos;
+
+  attribute vec4 tangent;
+  varying vec3 vTangent;
+  varying vec3 vBitangent;
+  varying vec3 vNormal;
+  varying vec3 vLL;
+  ////
+
+  void main() {
+    gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+    vUv = vec2 ((uv.s + float(which))/2., uv.t);
+  }
+</script>
+<script id="fs-texSwap" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  uniform vec2 imageSize;
+  varying vec2 vUv;
+  
+  ////
+  uniform sampler2D tNormal;
+  varying vec3 vTangent;
+  varying vec3 vBitangent;
+  varying vec3 vNormal;
+  varying vec3 vLL;
+  ////
+  
+  float step_w = 1.0/imageSize.x; 
+  float step_h = 1.0/imageSize.y; 
+  void main() { 
+  	float kernel[9];
+  	 
+    vec2 offset[9]; 
+  	offset[0]=vec2(-step_w, -step_h); 
+  	offset[1]=vec2(0.0, -step_h); offset[2]= vec2(step_w, -step_h), 
+  	offset[3]=vec2(-step_w, 0.0), offset[4]=vec2(0.0, 0.0), offset[5]=vec2(step_w, 0.0), 
+  	offset[6]=vec2(-step_w, step_h), offset[7]=vec2(0.0, step_h), offset[8]=vec2(step_w, step_h); 
+  	
+	// sobel filter - Gx
+	for (int i = 0; i < 9; i++) kernel[i]=0.0; 
+	kernel[0] = -1.0; kernel[2] = 1.0;
+	kernel[3] = -2.0; kernel[5] =  2.0;
+	kernel[6] = -1.0; kernel[8] = 1.0;
+
+  	vec3 sumX= vec3(0.0); 
+  	for (int i=0 ; i < 9; i++) { 
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb; 
+      	sumX += tmp*kernel[i]; 
+    }
+    
+	// sobel filter - Gy
+	for (int i = 0; i < 9; i++) kernel[i]=0.0; 
+	kernel[6] = -1.0; kernel[7] = -2.0; kernel[8] = -1.0;
+	kernel[0] = 1.0; kernel[1] = 2.0; kernel[2] = 1.0;
+
+  	vec3 sumY= vec3(0.0); 
+  	for (int i=0 ; i < 9; i++) { 
+    	vec3 tmp=texture2D (texture, vUv+offset[i]).rgb; 
+      	sumY += tmp*kernel[i]; 
+    }
+	vec3 delX = vec3 (1, 0, sumX);
+	vec3 delY = vec3 (0, 1, sumY);
+	vec3 n = normalize (cross (delX, delY));
+	vec3 encode = (n + vec3 (1))/2.0;
+  	gl_FragColor = vec4 (encode, 1.0);
+  }
+</script>
+
+<script id="vs-normalmap" type="x-shader/x-vertex">
+    uniform vec3 lightpos;
+
+	attribute vec4 tangent;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+	  vec4 vWorldpos = modelMatrix * vec4( position, 1.0 ) ;
+	  vec2 myrepeat = vec2 (1.0, 1.0);
+	  vUv = myrepeat*uv;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+	  // TBN in eyespace 
+	  // no need to normalize these varying variable
+	  // as they will be normalized in fragment shader
+	  //
+        vNormal = normalMatrix * normal ;
+		vTangent = normalMatrix * tangent.xyz ;
+		vBitangent = cross( vNormal, vTangent ) ;
+
+		vLL = normalMatrix * (lightpos - vWorldpos.xyz);
+	}
+
+</script>
+	
+<script id="fs-normalmap" type="x-shader/x-vertex">
+	uniform sampler2D tNormal;
+	varying vec2 vUv;
+	varying vec3 vTangent;
+	varying vec3 vBitangent;
+	varying vec3 vNormal;
+	varying vec3 vLL;
+
+	void main() {
+		
+		vec3 normalTex = texture2D (tNormal, vUv).xyz * 2.0 - 1.0;
+		normalTex.xy *= 6.0;    // 6 exaggerate the normal deviation
+		normalTex = normalize( normalTex );
+
+		mat3 tsb = mat3( normalize( vTangent ), normalize( vBitangent ), normalize( vNormal ) );
+		vec3 finalNormal = tsb * normalTex;
+		float ndotl = dot (normalize (vLL), normalize (finalNormal));
+		gl_FragColor = vec4( vec3(ndotl), 1 );
+
+	}
+</script>
+<script id="vs-mosaic" type="x-shader/x-vertex">
+  varying vec2 vUv; 
+  void main() { 
+      gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0); 
+      vUv = uv; 
+  }
+</script>
+<script id="fs-mosaic" type="x-shader/x-fragment">
+  uniform sampler2D texture; 
+  varying vec2 vUv; 
+  uniform float gran;
+  vec2 vUvm;
+  uniform vec2 headNDC;
+  uniform float headSize;
+
+  void main() {
+    float mygran = headSize/6.0;
+    float d = distance (headNDC, vUv);
+    float borderWidth = headSize*0.05; 
+    if (d < headSize) {
+  	  vUvm = floor (vUv/mygran)*mygran;
+  		gl_FragColor = texture2D(texture, vUvm); 
+    } else if (d < headSize+borderWidth) {
+       gl_FragColor = vec4(1,1,0,1);
+    } else {
+      vUvm = vUv;
+        	gl_FragColor = texture2D(texture, vUvm); 
+    }
+   }
+
+/*
+void main() {
+  gl_FragColor = texture2D (texture, vUv);
+}
+*/
+</script>
+
+<script>
+javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+
+var scene, renderer, camera;
+var material_shh;
+var sceneRTT, cameraRTT;
+var renderTarget;
+var planeXX;
+var subject, subjectClone;
+var raycaster, desk_light;
+var lit = true, roomlit = true;
+var ambient, directionalLight;
+var materialArray;
+var theObjectAll, theObjectPencil, theObjectChair;
+var sphere;
+var pen_holder, pen_holder_entrys;
+var desklampswitch, roomlightswitch;
+var normalMat;
+var walls, wall_entrys;
+var desk_things, desk_entrys;
+var angle1 = Math.PI/2, sign = 1;
+var byab = [0.3, 0.6, 0.7, 0.6];
+var scene1, camera1;
+var sphere_material, wallMeterial, wallMeterial2, DeskMeterial, penholder_wall_Meterial, wall_yuka_Meterial;
+var tea_front_Material, tea_frontup_Material, tea_right_Material, tea_rightup_Material, tea_back_Material, tea_backup_Material, tea_left_Material, tea_leftup_Material, tea_bottom_Material;
+
+var scene02, renderer, camera02;
+var scene01, camera01;
+var shaderMaterial;
+var angle = 0;
+var sign = 1;
+var which = 0;
+var light02;
+    
+var scene6, renderer, camera5, camera6, scene5;
+var material_shh5;
+var renderTarget5;
+var theObjectDoll;
+    
+class Ball_light {
+    constructor() {
+        this.pos = new THREE.Vector3(-20, 40, -10);
+        this.mesh = new THREE.Object3D();
+        this.light = new THREE.PointLight();
+    }
+}
+
+class Wall {
+    constructor() {
+        this.pos = new THREE.Vector3();
+    }
+}
+class PenHolder {
+    constructor() {
+        this.pos = new THREE.Vector3();
+    }
+}
+class Desk {
+    constructor() {
+        this.pos = new THREE.Vector3();
+    }
+}
+    
+init();
+animate();
+
+function unitize (object, x, y, z,targetSize) {  
+    // find bounding box of 'object'
+    var box3 = new THREE.Box3();
+    box3.setFromObject (object);
+    var size = new THREE.Vector3();
+    size.subVectors (box3.max, box3.min);
+    var center = new THREE.Vector3();
+    center.addVectors(box3.max, box3.min).multiplyScalar (0.5);
+    console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
+    console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
+
+    // uniform scaling according to objSize
+    var objSize = findMax (size);
+    var scaleSet = targetSize/objSize;
+    var theObject =  new THREE.Object3D();
+
+    theObject.add (object);
+    object.scale.set (scaleSet, scaleSet, scaleSet);
+    object.position.set (-center.x*scaleSet+x, -center.y*scaleSet + size.y/2*scaleSet+y, -center.z*scaleSet+z);
+    //-22, 21, -10
+    return theObject;
+
+    // helper function
+    function findMax(v) {
+        if (v.x > v.y) {
+            return v.x > v.z ? v.x : v.z;
+        } else { // v.y > v.x
+            return v.y > v.z ? v.y : v.z;
+        } 
+    }
+}
+function init() {
+    
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  renderer.setClearColor(0x000000);
+  renderer.autoClear = false;
+  
+  // scene & camera: for final result
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set (0, 80, 400);
+  ///////////////////////////////////////////////////////
+  scene6 = new THREE.Scene();
+  grey_zchange = 10;
+  grey_xchange = 6;
+    
+  camera5 = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 1000);
+  //camera5.position.y = 80;
+  camera5.position.z = 100;
+  camera5.lookAt(new THREE.Vector3(0, 0, 0));
+  ///////////////////////////////////////////////////////
+  scene5 = new THREE.Scene();
+  ambient5 = new THREE.AmbientLight(0xffffff);
+  scene5.add(ambient5);
+  ///////////////////////////////////////////////////////
+
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+  window.addEventListener('resize', onWindowResize, false);
+
+  //////////////////////////////////////////////////////////////
+  var material_shh_normal = new THREE.ShaderMaterial({
+    vertexShader: document.getElementById('vsNormal').textContent,
+    fragmentShader: document.getElementById('fsNormal').textContent
+  });
+
+  // scene0: contains a torusKnot with shaderMaterial (for outline)
+  // camera0: ortho camera
+  
+  scene0 = new THREE.Scene();
+  subject = new THREE.Mesh (new THREE.TeapotBufferGeometry(10),material_shh_normal);
+  subject.position.x = 0;
+  subject.position.z = 0;
+  subject.position.y = -5;
+  scene0.add (subject);
+  camera0 = new THREE.OrthographicCamera (-100,100,100,-100,-1000,1000);
+    
+  ////////////////////////////////////////////////////////
+
+  renderTarget = new THREE.WebGLRenderTarget( 512,512);
+
+  var uniforms = {
+    imageSize: {
+    	type: 'i',
+      value: renderTarget.width
+    },
+    texture: {
+    	type: 't',
+      value: renderTarget.texture
+    }
+  };
+
+  material_shh = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: document.getElementById('vsFilter').textContent,
+    fragmentShader: document.getElementById('fsFilter').textContent
+  });
+
+  // sceneRTT: contains a plane to draw the outline  
+  sceneRTT = new THREE.Scene();
+  cameraRTT = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 10);
+  var bs = new THREE.Mesh(new THREE.PlaneGeometry(100,100), material_shh);
+  sceneRTT.add(bs);
+  
+ ///////////////////////////////////////////////////////////////////
+  // sceneRegular: contains the torusKnot with PhongMaterial
+  // and all lights to light up the torusKnot
+  sceneRegular = new THREE.Scene();
+  subjectClone = subject.clone();
+  //subjectClone.material = new THREE.MeshPhongMaterial();
+  subjectClone.material = new THREE.ShaderMaterial({
+    uniforms: {
+        lightpos: {
+            type: 'v3',
+            value: new THREE.Vector3(-30, 60, 50)
+        }
+    },
+    vertexShader: document.getElementById('myVertexShader').textContent,
+    fragmentShader: document.getElementById('myFragmentShader').textContent
+  });
+  sceneRegular.add(subjectClone);
+  
+  var pointLight = new THREE.PointLight(0xffffff);
+  pointLight.position.set(0, 300, 200);
+  sceneRegular.add(pointLight);
+
+  var ambientLight = new THREE.AmbientLight(0x555555);
+  sceneRegular.add(ambientLight);
+    
+  
+
+//////////////////////
+  renderTarget_whole = new THREE.WebGLRenderTarget( 512,512);
+   
+   // scene is the final plane (to be mapped with the final subject)
+   scene = new THREE.Scene();
+   
+   cutoutShaderMat = new THREE.ShaderMaterial ({
+    uniforms: {
+       texture: {type:'t', value: renderTarget_whole.texture}
+    },
+    vertexShader: document.getElementById('vsCut').textContent,
+    fragmentShader: document.getElementById('fsCut').textContent
+   });
+   
+   planeXX = new THREE.Mesh (new THREE.PlaneGeometry (50,50), cutoutShaderMat);
+   scene.add (planeXX);
+   planeXX.position.y = 25;
+   //scene.add (new THREE.GridHelper (200,20,'red','white'));
+    
+    /////////////////////////////////////////
+    sceneGrey = new THREE.Scene();
+    grey_zchange = 10;
+    grey_xchange = 6;
+    
+    ambient = new THREE.AmbientLight(0x888888);
+    //sceneGrey.add(ambient);
+
+    directionalLight = new THREE.PointLight(0xAAAAAA);
+    directionalLight.position.set(1, 100, 1);//.normalize();
+    //sceneGrey.add(directionalLight);
+    // model
+    sceneGrey.add(buildModel());
+    
+    var onProgress = function(xhr) {
+        if (xhr.lengthComputable) {
+          var percentComplete = xhr.loaded / xhr.total * 100;
+          console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+    var onError = function(xhr) {};
+    var mtlLoader = new THREE.MTLLoader();
+    mtlLoader.setPath('desk_lamp/');
+    mtlLoader.load('Desk_lamp.mtl', function(materials) {
+        materials.preload();
+        var objLoader = new THREE.OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.setPath('desk_lamp/');
+        objLoader.load('Desk_lamp.obj', function(object) {
+            theObjectAll = unitize (object, -22+grey_xchange, 21, -5+grey_zchange, 20);
+            theObjectAll.children[0].castShadow = true;
+            theObjectAll.children[0].receiveShadow = true;
+            sceneGrey.add (theObjectAll);				
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                    }
+                }
+            );
+        }, onProgress, onError);
+    });
+
+    var onProgress2 = function(xhr) {
+        if (xhr.lengthComputable) {
+          var percentComplete = xhr.loaded / xhr.total * 100;
+          console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+    var onError2 = function(xhr) {};
+    var mtlLoader2 = new THREE.MTLLoader();
+    mtlLoader2.setPath('woodchair/');
+    mtlLoader2.load('WoodChair.mtl', function(materials) {
+        materials.preload();
+        var objLoader2 = new THREE.OBJLoader();
+        objLoader2.setMaterials(materials);
+        objLoader2.setPath('woodchair/');
+        objLoader2.load('WoodChair.obj', function(object) {
+            theObjectChair = unitize (object, 10+grey_xchange, -9.5, 40+grey_zchange, 30);
+            theObjectChair.children[0].rotation.x = -Math.PI/2;
+            theObjectChair.children[0].rotation.z = -Math.PI/4;
+            sceneGrey.add (theObjectChair);
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                    }
+                }
+            );
+        }, onProgress2, onError2);
+    });
+    //pencil
+    var onProgress3 = function(xhr) {
+        if (xhr.lengthComputable) {
+          var percentComplete = xhr.loaded / xhr.total * 100;
+          console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+    var onError3 = function(xhr) {};
+    var mtlLoader3 = new THREE.MTLLoader();
+    mtlLoader3.setPath('pencil/');
+    mtlLoader3.load('pencil.mtl', function(materials) {
+        materials.preload();
+        var objLoader3 = new THREE.OBJLoader();
+        objLoader3.setMaterials(materials);
+        objLoader3.setPath('pencil/');
+        objLoader3.load('pencil.obj', function(object) {
+            theObjectChair = unitize (object, 12.8+grey_xchange, 24.5, -12+grey_zchange, 8);
+            theObjectChair.children[0].rotation.x = -Math.PI/2;
+            theObjectChair.children[0].rotation.z = -Math.PI/4;
+            theObjectChair.children[0].rotation.y = -Math.PI/6;
+            sceneGrey.add (theObjectChair);
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                    }
+                }
+            );
+        }, onProgress3, onError3);
+    });
+    //pen
+    var onProgress4 = function(xhr) {
+        if (xhr.lengthComputable) {
+          var percentComplete = xhr.loaded / xhr.total * 100;
+          console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+    var onError4 = function(xhr) {};
+    var mtlLoader4 = new THREE.MTLLoader();
+    mtlLoader4.setPath('pen/');
+    mtlLoader4.load('Pen_01.mtl', function(materials) {
+        materials.preload();
+        var objLoader4 = new THREE.OBJLoader();
+        objLoader4.setMaterials(materials);
+        objLoader4.setPath('pen/');
+        objLoader4.load('Pen_01.obj', function(object) {
+            theObjectChair = unitize (object, 15+grey_xchange, 20, -12+grey_zchange, 8);
+            theObjectChair.children[0].rotation.x = -Math.PI/2;
+            theObjectChair.children[0].rotation.z = Math.PI/2.7;
+            theObjectChair.children[0].rotation.y = Math.PI/2.5;
+            sceneGrey.add (theObjectChair);
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                    }
+                }
+            );
+        }, onProgress4, onError4);
+    });
+    //
+    //walls
+    var cubeGeom = new THREE.BoxGeometry(206, 50, 6);
+    var cubeGeom_yuka = new THREE.BoxGeometry(206, 206, 0.5);
+
+    wallMeterial = new THREE.MeshBasicMaterial({
+        color: 0x888888,
+        side: THREE.DoubleSide
+    });
+    wallMeterial2 = new THREE.MeshBasicMaterial({
+        color: 0x999999,
+        side: THREE.DoubleSide
+    });
+    wall_yuka_Meterial = new THREE.MeshBasicMaterial({
+        color: 0xAAAAAA,
+        side: THREE.DoubleSide
+    });
+
+    let wall_entry = new THREE.Mesh(cubeGeom, wallMeterial);
+    let wall_entry2 = new THREE.Mesh(cubeGeom, wallMeterial2);
+    let yuka_entry = new THREE.Mesh(cubeGeom_yuka, wall_yuka_Meterial);
+
+    walls = [];
+    wall_entrys = []
+    let PosOfx = [0, 100, 0, -100, 0],
+    PosOfz = [100, 0, -100, 0, 0],
+    Rotation = [0, 1, 0, 1, 2];
+
+    for (let i = 2; i < 5; i++) {
+        let wall = new Wall();
+        walls.push(wall);
+        let thisMesh = new THREE.Mesh;
+        if(i != 4 && i != 3) thisMesh = wall_entry.clone();
+        if(i == 3) thisMesh = wall_entry2.clone();
+        else if(i == 4) thisMesh = yuka_entry.clone();
+
+        if (Rotation[i] == 1) thisMesh.rotation.y = -Math.PI / 2;
+        else if (Rotation[i] == 2) {
+            thisMesh.rotation.z = -Math.PI / 2;
+            thisMesh.rotation.x = Math.PI / 2;
+        }
+        if (Rotation[i] == 2) thisMesh.position.set(PosOfx[i]+grey_xchange, -2, PosOfz[i]+grey_zchange, Rotation[i]);
+        else thisMesh.position.set(PosOfx[i]+grey_xchange, 23.5, PosOfz[i]+grey_zchange, Rotation[i]);
+        
+        wall_entrys.push(thisMesh);
+        sceneGrey.add(thisMesh)
+    }
+
+    //Desk
+    var cubeGeom = new THREE.BoxGeometry(70, 30, 2);
+    var thinCube = new THREE.BoxGeometry(2, 2, 22);
+    DeskMeterial = new THREE.MeshBasicMaterial({
+        color: 0x3b240e,
+        side: THREE.DoubleSide,
+    });
+    //0x3b240e
+    let desk_entry = new THREE.Mesh(cubeGeom, DeskMeterial);
+    let desk_leg = new THREE.Mesh(thinCube, DeskMeterial);
+
+    desk_things = []
+    desk_entrys = []
+    PosOfx = [0, 30, 30, -30, -30],
+    PosOfz = [0, 10, -10, 10, -10],
+    Rotation = [2, 0, 1, 0, 1];
+
+    for (let i = 0; i < 5; i++) {
+        let desk = new Desk();
+        desk_things.push(desk);
+        let thisMesh = new THREE.Mesh();
+        if(Rotation[i] == 2) thisMesh = desk_entry.clone();
+        else thisMesh = desk_leg.clone();
+
+        if (i == 0) thisMesh.rotation.x = -Math.PI / 2;
+        else thisMesh.rotation.x = -Math.PI / 2;
+
+        if(Rotation[i] == 2) thisMesh.position.set(PosOfx[i]+grey_xchange, 20, PosOfz[i]+grey_zchange, Rotation[i]);
+        else thisMesh.position.set(PosOfx[i]+grey_xchange, 9, PosOfz[i]+grey_zchange, Rotation[i]);
+
+        desk_entrys.push(thisMesh);
+        sceneGrey.add(thisMesh)
+    }
+
+    var sphere_geometry = new THREE.SphereGeometry( 2, 32, 32 );
+    sphere_material = new THREE.MeshBasicMaterial({color: 0xffff00} );// {color: 0xffff00} 
+    sphere = new THREE.Mesh( sphere_geometry, sphere_material );
+    //sphere.material.emissive = new THREE.Color('yellow');
+    sphere.position.set(-19+grey_xchange, 38, -5+grey_zchange);
+    sceneGrey.add( sphere );
+
+    //light
+    desk_light = new THREE.SpotLight(0xffffff, 1, 39);
+    desk_light.position.set(-18, 36, -10+grey_zchange);
+    sceneGrey.add(desk_light);
+
+    /////////////////////////////////////////////////
+
+    //pen holder
+    var penholder_wall_length = new THREE.BoxGeometry(6, 5, 0.1);
+    var penholder_wall_width = new THREE.BoxGeometry(3, 5, 0.1);
+    var penholder_wall_bottom = new THREE.BoxGeometry(3, 6, 0.1);
+
+    let loader = new THREE.TextureLoader();
+    loader.crossOrigin = '';
+    texture = loader.load('./texture.jpg');
+    alpha = loader.load('./metal_holes_inverse.png');
+
+    penholder_wall_Meterial = new THREE.MeshBasicMaterial({
+        map: texture,
+        alphaMap: alpha,
+        transparent: true
+    });
+
+    let pen_holder_entry_len = new THREE.Mesh(penholder_wall_length, penholder_wall_Meterial);
+    let pen_holder_entry_wid = new THREE.Mesh(penholder_wall_width, penholder_wall_Meterial);
+    let pen_holder_entry_bot = new THREE.Mesh(penholder_wall_bottom, penholder_wall_Meterial);
+    
+    pen_holder = [];
+    pen_holder_entrys = []
+    let pen_PosOfx = [15, 18, 15, 12, 15],
+    pen_PosOfz = [-10, -11.5, -13, -11.5, -11.5],
+    pen_Rotation = [0, 1, 0, 1, 2];
+
+    for (let i = 0; i < 5; i++) {
+        let pen_holder_wall = new PenHolder();
+        pen_holder.push(pen_holder_wall);
+        let thisMesh = new THREE.Mesh();
+        
+        if (pen_Rotation[i] == 0) thisMesh = pen_holder_entry_len.clone();
+        else if (pen_Rotation[i] == 1) thisMesh = pen_holder_entry_wid.clone();
+        else thisMesh = pen_holder_entry_bot.clone();
+
+        if (pen_Rotation[i] == 1) thisMesh.rotation.y = -Math.PI / 2;
+        else if (pen_Rotation[i] == 2) {
+            thisMesh.rotation.z = -Math.PI / 2;
+            thisMesh.rotation.x = Math.PI / 2;
+        }
+
+        if (pen_Rotation[i] == 2) thisMesh.position.set(pen_PosOfx[i]+grey_xchange, 21, pen_PosOfz[i]+grey_zchange);
+        else thisMesh.position.set(pen_PosOfx[i]+grey_xchange, 23, pen_PosOfz[i]+grey_zchange);
+
+        pen_holder_entrys.push(thisMesh);
+        sceneGrey.add(thisMesh);
+    }
+    ////////////////////////////////////////////////////////////////
+    
+    
+    width = window.innerWidth;
+    height = window.innerHeight;
+    renderTarget_Grey = new THREE.WebGLRenderTarget (width, height);  // full-size RT
+    renderTarget5 = new THREE.WebGLRenderTarget(1024, 1024);//256,256); 
+   
+    scene1 = new THREE.Scene();
+    camera1 = new THREE.OrthographicCamera (0, width, height, 0,-100,1000);
+    
+    var uniforms2 = {
+        imageSize: {
+          type: 'v2',
+          value: new THREE.Vector2(width, height)
+        },
+        texture: {
+          type: 't',
+          value: renderTarget_Grey.texture
+        } ,
+    };
+
+    var vertShader = document.getElementById('myVertexShader-mono').textContent;
+    var fragShader = document.getElementById('myFragmentShader-mono').textContent;
+    shaderMaterial = new THREE.ShaderMaterial({
+        uniforms: uniforms2,
+        vertexShader: vertShader,
+        fragmentShader: fragShader,
+
+        depthTest: false,
+        depthWrite: false
+    });
+    
+    var plane0 = new THREE.Mesh (new THREE.PlaneGeometry(width, height), shaderMaterial);
+    scene1.add (plane0);
+    plane0.position.set (width/2, height/2, 0);
+    
+    ////////////////////////////////////////////////////////////////////////
+    scene01 = new THREE.Scene();
+  camera01 = new THREE.OrthographicCamera (-50,50,50,-50,-10,100);
+  let loader01 = new THREE.TextureLoader();
+  loader01.setCrossOrigin ('');
+  let texture01 = loader01.load('./photome.png');  // olympus
+//  let texture = loader.load('https://i.imgur.com/NHXZYjr.png?2');  // gakki
+
+   var uniforms01 = {
+        imageSize: {
+          type: 'v2',
+          value: new THREE.Vector2(256,256)
+        },
+        texture: {
+          type: 't',
+          value: texture01
+        } ,
+        which: {
+          type: 'i',
+          value: 0
+        }
+  };
+
+  var vertShader01 = document.getElementById('vs-texSwap').textContent;
+  var fragShader01 = document.getElementById('fs-texSwap').textContent;
+  var material_shader01 = new THREE.ShaderMaterial({
+    uniforms: uniforms01,
+    vertexShader: vertShader01,
+    fragmentShader: fragShader01,
+    side: THREE.DoubleSide
+  });
+
+  var geometry01 = new THREE.PlaneGeometry(100,100);
+  var mesh01 = new THREE.Mesh (geometry01, material_shader01);
+  scene01.add (mesh01)
+  //////////////////////////
+    
+  renderTarget02 = new THREE.WebGLRenderTarget(256, 256);
+  scene02 = new THREE.Scene();
+  camera02 = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+  camera02.position.y = 80;
+  camera02.position.z = 400;
+  camera02.lookAt(new THREE.Vector3(0, 0, 0));
+  
+  let controls02 = new THREE.OrbitControls(camera02, renderer.domElement);
+
+  light02 = new THREE.PointLight ();
+  scene02.add (light02);
+  //scene02.add (new THREE.PointLightHelper (light02,5));
+
+//  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+//  scene.add(gridXZ);
+
+  var uniforms02 = {
+    imageSize: {
+      type: 'v2',
+      value: 256
+    },
+    tNormal: {
+      type: 't',
+      value: renderTarget02.texture
+    },
+    lightpos: {
+      type: 'v3',
+      value: new THREE.Vector3()
+    }
+  };
+  
+  var vertShader02 = document.getElementById('vs-normalmap').textContent;
+  var fragShader02 = document.getElementById('fs-normalmap').textContent;
+  
+  shaderMaterial02 = new THREE.ShaderMaterial({
+    uniforms: uniforms02,
+    vertexShader: vertShader02,
+    fragmentShader: fragShader02
+  });
+  var geometry02 = new THREE.PlaneBufferGeometry(28,40);//7:10
+  THREE.BufferGeometryUtils.computeTangents(geometry02);
+  let meshFinal02 = new THREE.Mesh (geometry02, shaderMaterial02);
+  meshFinal02.position.y = 25;
+  meshFinal02.rotation.y = Math.PI/2;
+  meshFinal02.position.x = -95;
+  scene02.add (meshFinal02);
+  //////////////////////////
+  function incWhich() {
+  	//which += 1;
+    which = !which;
+  	material_shader01.uniforms.which.value = which;
+  	setTimeout (incWhich, 1000);
+  }
+  setTimeout (incWhich, 0);
+    
+  ///////////////////////////////////////////////////////////////////////
+   
+  var uniforms5 = {
+    headNDC: {
+      type: 'v2',
+      value: null
+    },
+    headSize: {
+     type: 'f',
+     value: 0
+    },
+    texture: {
+      type: 't',
+      value: renderTarget5.texture
+    }, 
+    gran: {
+      type: 'f',
+      value: 0
+    }
+  };
+
+
+  var vertShader5 = document.getElementById('vs-mosaic').innerHTML;
+  var fragShader5 = document.getElementById('fs-mosaic').innerHTML;
+  material_shh5 = new THREE.ShaderMaterial({
+    uniforms: uniforms5,
+    vertexShader: vertShader5,
+    fragmentShader: fragShader5,
+  });
+
+  plane6 = new THREE.Mesh (new THREE.PlaneGeometry (30,30), material_shh5 );
+  plane6.position.x = 9;
+  plane6.position.y = 23;
+  plane6.position.z = -1;
+  camera6 = new THREE.OrthographicCamera (-50,50,50,-50, -100,100);
+  scene6.add (plane6);
+    
+  //////////////////////////////////////////////
+  var onProgress5 = function(xhr) {
+        if (xhr.lengthComputable) {
+          var percentComplete = xhr.loaded / xhr.total * 100;
+          console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+    var onError5 = function(xhr) {};
+    var mtlLoader5 = new THREE.MTLLoader();
+    mtlLoader5.setPath('girl/');
+    mtlLoader5.load('girl.mtl', function(materials) {
+        materials.preload();
+        var objLoader5 = new THREE.OBJLoader();
+        objLoader5.setMaterials(materials);
+        objLoader5.setPath('girl/');
+        objLoader5.load('girl.obj', function(object) {
+            theObjectDoll = unitize (object, 8+grey_xchange, 21, -12+grey_zchange, 10);
+            scene5.add (theObjectDoll);
+            object.traverse (
+                function(mesh) {
+                    if (mesh instanceof THREE.Mesh) {
+                        mesh.material.side = THREE.DoubleSide;
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                    }
+                }
+            );
+        }, onProgress5, onError5);
+    });
+}
+
+function onWindowResize() {
+  camera01.aspect = window.innerWidth / window.innerHeight;
+  camera01.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    
+    requestAnimationFrame(animate);
+    
+    var py = new THREE.Vector3(0, 1, 0);
+    var pz = new THREE.Vector3(0, 0, 1);
+    var point = camera.position.clone().sub(subject.position).projectOnPlane(py);
+    angle = point.angleTo(pz);
+    var test = new THREE.Vector3();
+
+    if(test.crossVectors(pz, point).dot(py) > 0)
+        angle = -angle;
+
+    subject.rotation.y = angle;
+    subjectClone.rotation.y = angle;
+
+    material_shh.uniforms.imageSize.value = 60;
+    // this value can alter the width of silhouette !!
+    // 1024: original width
+    // 512, 256, 128, ...: wider silhouette
+    
+    
+    renderer.setRenderTarget (renderTarget_Grey);
+    renderer.clear();  // clear the buffers of render target 
+    sphere_material.colorWrite = true;
+    wallMeterial.colorWrite = true;
+    wallMeterial2.colorWrite = true;
+    DeskMeterial.colorWrite = true;
+    penholder_wall_Meterial.colorWrite = true;
+    tea_front_Material.colorWrite = true;
+    tea_frontup_Material.colorWrite = true;
+    tea_right_Material.colorWrite = true;
+    tea_rightup_Material.colorWrite = true;
+    tea_back_Material.colorWrite = true;
+    tea_backup_Material.colorWrite = true;
+    tea_left_Material.colorWrite = true;
+    tea_leftup_Material.colorWrite = true;
+    tea_bottom_Material.colorWrite = true;
+    wall_yuka_Meterial.colorWrite = true;
+    renderer.render(sceneGrey, camera);
+
+    // switch to screen output    
+    renderer.setRenderTarget (null);
+    renderer.clearColor();  // clear screen buffers
+    renderer.render(scene1, camera1);
+
+    // set up blockers from sceneGrey (colorWrite is disabled)
+    sphere_material.colorWrite = false;
+    wallMeterial.colorWrite = false;
+    wallMeterial2.colorWrite = false;
+    DeskMeterial.colorWrite = false;
+    penholder_wall_Meterial.colorWrite = false;
+    tea_front_Material.colorWrite = false;
+    tea_frontup_Material.colorWrite = false;
+    tea_right_Material.colorWrite = false;
+    tea_rightup_Material.colorWrite = false;
+    tea_back_Material.colorWrite = false;
+    tea_backup_Material.colorWrite = false;
+    tea_left_Material.colorWrite = false;
+    tea_leftup_Material.colorWrite = false;
+    tea_bottom_Material.colorWrite = false;
+    wall_yuka_Meterial.colorWrite = false;
+    renderer.render (sceneGrey, camera);
+    renderer.render(scene, camera);
+    
+    
+    // scene0: torusKnot with shaderMaterial (draw eyeNormal)
+    renderer.setRenderTarget (renderTarget);
+    renderer.setClearColor (0x000000);
+    renderer.clear();
+    renderer.render (scene0, camera0);  // produce eyeNormal plot of subject
+
+    // sceneRTT: fullQuad + filter (discard "near black" fragments)
+    renderer.setRenderTarget (renderTarget_whole);
+    renderer.setClearColor (0xffff00);  // yellow "magic" background ... to be cutout
+    renderer.clear();
+    renderer.render (sceneRTT, cameraRTT);  // produce outline
+
+    
+    
+    renderer.render(sceneRegular, camera0); // camera0: the same as eyeNormal plot
+
+    ///////// final texture completed (except boundary removal)  
+    planeXX.lookAt (camera.position.x, 25, camera.position.z);
+
+    renderer.setRenderTarget (renderTarget);
+    renderer.setClearColor (0x000000);
+    renderer.clear();
+    renderer.render (scene, camera);  // planeXX (in scene) contains a shaderMaterial to cutout border
+    
+    /////////////////////////////////////////////////////////////////////////
+    angle1 = angle1 + 0.01*sign;
+    if(angle1 <Math.PI/2 || angle1 > 3*(Math.PI/2)) sign *= -1;
+    light02.position.set (50*Math.cos(angle1), 20, 50*Math.sin(angle1));
+    shaderMaterial02.uniforms.lightpos.value.copy (light02.position);
+
+    renderer.setRenderTarget(renderTarget02);
+    renderer.render(scene01, camera01);
+
+    
+    renderer.setRenderTarget(null);
+    renderer.render(scene02, camera02);
+    
+     if(theObjectDoll){
+      //test doll NDC
+      var headCenter = new THREE.Vector3(19,28,0);
+      theObjectDoll.localToWorld (headCenter);
+      var headTop = new THREE.Vector3(19,28+3,0);
+      theObjectDoll.localToWorld (headTop);
+      var noseTip = new THREE.Vector3(19,20,-10);
+      theObjectDoll.localToWorld (noseTip);
+
+      headCenter.applyMatrix4 (camera.matrixWorldInverse).applyMatrix4 (camera.projectionMatrix);
+      material_shh5.uniforms.headNDC.value = new THREE.Vector2 ((headCenter.x+1)/2, (headCenter.y+1)/2);
+      headTop.applyMatrix4 (camera.matrixWorldInverse).applyMatrix4 (camera.projectionMatrix);
+      noseTip.applyMatrix4 (camera.matrixWorldInverse).applyMatrix4 (camera.projectionMatrix);
+
+      if (noseTip.z - headCenter.z > 0) {
+        //console.log ('face forward');
+        material_shh5.uniforms.gran.value = 0.01;
+        material_shh5.uniforms.headSize.value = 1.2 * headTop.distanceTo(headCenter)/2;
+      }  else {
+        console.log ('backward');
+        material_shh5.uniforms.gran.value = 0;
+        material_shh5.uniforms.headSize.value = 0;
+      }
+
+      //renderer.setRenderTarget (renderTarget5);
+      renderer.render(scene5, camera);
+      
+      renderer.setRenderTarget (null);
+      renderer.setRenderTarget (renderTarget5);
+      renderer.clear();
+      renderer.render(scene6, camera6);
+  }
+}
+
+function buildModel(){
+    let geometry = new THREE.Geometry();
+    let pos_y = 21, pos_x = 25+grey_xchange, pos_z = -10+grey_zchange;
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 0+pos_y, 2+pos_z));//0
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 0+pos_y, 2+pos_z));//1
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 9+pos_y, 2+pos_z));//2
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 11+pos_y, 0+pos_z));//3
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 11+pos_y, 0+pos_z));//4
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 9+pos_y, 2+pos_z));//5
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 0+pos_y, -2+pos_z));//6
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 9+pos_y, -2+pos_z));//7
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 9+pos_y, -2+pos_z));//8
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 0+pos_y, -2+pos_z));//9
+    geometry.vertices.push(new THREE.Vector3(2+pos_x, 12+pos_y, 0+pos_z));//10
+    geometry.vertices.push(new THREE.Vector3(-2+pos_x, 12+pos_y, 0+pos_z));//11
+
+    let face;
+    face = new THREE.Face3(0, 1, 2), face.materialIndex = 0;
+    geometry.faces.push(face);
+    face = new THREE.Face3(0, 2, 5), face.materialIndex = 0;
+    geometry.faces.push(face);//front
+
+    face = new THREE.Face3(2, 3, 4), face.materialIndex = 1;
+    geometry.faces.push(face);
+    face = new THREE.Face3(2, 4, 5), face.materialIndex = 1;
+    geometry.faces.push(face);//front-up
+
+    face = new THREE.Face3(1, 6, 2), face.materialIndex = 2;
+    geometry.faces.push(face);
+    face = new THREE.Face3(6, 7, 2), face.materialIndex = 2;
+    geometry.faces.push(face);//right
+
+    face = new THREE.Face3(2, 7, 3), face.materialIndex = 3;
+    geometry.faces.push(face);//right-triangle
+
+    face = new THREE.Face3(6, 7, 8), face.materialIndex = 4;
+    geometry.faces.push(face);
+    face = new THREE.Face3(6, 8, 9), face.materialIndex = 4;
+    geometry.faces.push(face);//back
+
+    face = new THREE.Face3(7, 3, 8), face.materialIndex = 5;
+    geometry.faces.push(face);
+    face = new THREE.Face3(3, 4, 8), face.materialIndex = 5;
+    geometry.faces.push(face);//back-up
+
+    face = new THREE.Face3(8, 5, 9), face.materialIndex = 6;
+    geometry.faces.push(face);
+    face = new THREE.Face3(5, 0, 9), face.materialIndex = 6;
+    geometry.faces.push(face);//left
+
+    face = new THREE.Face3(8, 4, 5), face.materialIndex = 7;
+    geometry.faces.push(face);//left-triangle
+
+    face = new THREE.Face3(3, 10, 11), face.materialIndex = 8;
+    geometry.faces.push(face);
+    face = new THREE.Face3(11, 4, 3), face.materialIndex = 8;
+    geometry.faces.push(face);//front-top
+
+//            face = new THREE.Face3(3, 11, 10), face.materialIndex = 9;
+//            geometry.faces.push(face);
+//            face = new THREE.Face3(4, 11, 3), face.materialIndex = 9;
+//            geometry.faces.push(face);//back-top
+
+    face = new THREE.Face3(1, 6, 9), face.materialIndex = 9;
+    geometry.faces.push(face);
+    face = new THREE.Face3(0, 1, 9), face.materialIndex = 9;
+    geometry.faces.push(face);//bottom
+
+    //material position
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+    //front
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+    //front-up
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+    //right
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)]);
+    //right-up
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+    //back
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 0)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 1), new THREE.Vector2(0, 1), new THREE.Vector2(0, 0)]);
+    //back-up
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+    //left
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(1, 0), new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)]);
+    //left-up
+
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(0, 1), new THREE.Vector2(1, 1)]);
+    geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(1, 0)]);
+    //front top
+//            
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+//            geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+//            //bottom
+
+    geometry.computeFaceNormals();
+    geometry.computeVertexNormals();
+
+    let loader = new THREE.TextureLoader();
+    loader.crossOrigin = ('');
+    let texture_front = loader.load('./tea_front.png');
+    let texture_right = loader.load('./tea_right.png');
+    let texture_left = loader.load('./tea_left.png');
+    let texture_back = loader.load('./tea_back.png');
+    let texture_frontup = loader.load('./tea_frontup.png');
+    let texture_rightup = loader.load('./tea_rightup.png');
+    let texture_leftup = loader.load('./tea_leftup.png');
+    let texture_backup = loader.load('./tea_backup.png');
+    let texture_fronttop = loader.load('./tea_top_front.png');
+    let texture_backtop = loader.load('./tea_top_back.png');
+
+    texture_frontup.wrapS = THREE.RepeatWrapping;
+    texture_frontup.repeat.x = - 1;
+
+    texture_backup.wrapS = THREE.RepeatWrapping;
+    texture_backup.repeat.x = - 1;
+
+    texture_right.wrapS = THREE.RepeatWrapping;
+    texture_right.repeat.x = - 1;
+
+    texture_left.wrapS = THREE.RepeatWrapping;
+    texture_left.repeat.x = - 1;
+
+    texture_left.wrapT = THREE.RepeatWrapping;
+    texture_left.repeat.y = - 1;
+
+    /*
+    tea_front_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    tea_frontup_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+
+    tea_right_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    tea_rightup_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+
+    tea_back_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    tea_backup_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+
+    tea_left_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    tea_leftup_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+
+    tea_bottom_Material = new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    */
+
+    tea_front_Material = new THREE.MeshBasicMaterial({map:texture_front, side:THREE.DoubleSide});
+    tea_frontup_Material = new THREE.MeshBasicMaterial({map:texture_frontup, side: THREE.DoubleSide});
+
+    tea_right_Material = new THREE.MeshBasicMaterial({map:texture_right, side: THREE.DoubleSide});
+    tea_rightup_Material = new THREE.MeshBasicMaterial({map:texture_rightup, side: THREE.DoubleSide});
+
+    tea_back_Material = new THREE.MeshBasicMaterial({map:texture_back, side: THREE.DoubleSide});
+    tea_backup_Material = new THREE.MeshBasicMaterial({map:texture_backup, side: THREE.DoubleSide});
+
+    tea_left_Material = new THREE.MeshBasicMaterial({map:texture_left, side: THREE.DoubleSide});
+    tea_leftup_Material = new THREE.MeshBasicMaterial({map:texture_leftup, side: THREE.DoubleSide});
+
+    tea_bottom_Material = new THREE.MeshBasicMaterial({color:'white', side: THREE.DoubleSide});
+
+
+    materialArray = [];
+    materialArray.push(tea_front_Material, tea_frontup_Material, tea_right_Material, tea_rightup_Material, tea_back_Material, tea_backup_Material, tea_left_Material, tea_leftup_Material, tea_bottom_Material, tea_bottom_Material);
+//    materialArray.push(
+//        new THREE.MeshPhongMaterial({map:texture_front, side:THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_frontup, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_right, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_rightup, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_back, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_backup, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_left, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({map:texture_leftup, side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({color:'white', side: THREE.DoubleSide}),
+//        new THREE.MeshPhongMaterial({color:'white', side: THREE.DoubleSide})
+//    );
+    let tea_case = new THREE.Mesh(geometry, materialArray);
+    //tea_case.castShadow = true;
+    //tea_case.receiveShadow = true;
+    return tea_case;
+}
+</script>
+
+</body>
+</html>
