@@ -42,7 +42,6 @@
   <br> (Perlin-noise textured plane + mosaic)
 </div>
 
-
 <!-- shader for eyeNormal Plot -->
 <script id="vsNormal" type="x-shader/x-vertex">
   varying vec3 vNormal;
@@ -58,10 +57,8 @@
   	gl_FragColor = vec4 (color,1);
   }
 </script>
-
 <!-- shader for Lapace filter -->
 <!-- with background discard  -->
-
 <script id="vsFilter" type="x-shader/x-vertex">
   varying vec2 vUv; 
   void main() { 
@@ -99,7 +96,6 @@
   	   gl_FragColor = vec4 (0,0,0, 1.0); 
   }
 </script>
-
 <!-- shader to cutout "background" -->
 <script id="vsCut" type="x-shader/x-vertex">
   varying vec2 vUv; 
@@ -119,7 +115,6 @@
   		gl_FragColor = vec4 (color, 1);
   }
 </script>
-
 <script id="myVertexShader" type="x-shader/x-vertex">
     uniform vec3 lightpos;
     varying float ndotl;
@@ -261,7 +256,6 @@
   }
 
 </script>
-
 <script id="vs-texSwap" type="x-shader/x-vertex">
   uniform int which; // 0, 1
   varying vec2 vUv;
@@ -334,7 +328,6 @@
   	gl_FragColor = vec4 (encode, 1.0);
   }
 </script>
-
 <script id="vs-normalmap" type="x-shader/x-vertex">
     uniform vec3 lightpos;
 
@@ -364,7 +357,6 @@
 	}
 
 </script>
-	
 <script id="fs-normalmap" type="x-shader/x-vertex">
 	uniform sampler2D tNormal;
 	varying vec2 vUv;
@@ -615,7 +607,6 @@ class Ball_light {
         this.light = new THREE.PointLight();
     }
 }
-
 class Wall {
     constructor() {
         this.pos = new THREE.Vector3();
@@ -781,8 +772,8 @@ function init() {
     
   
 
-//////////////////////
-  renderTarget_whole = new THREE.WebGLRenderTarget( 512,512);
+   //////////////////////
+   renderTarget_whole = new THREE.WebGLRenderTarget( 512,512);
    
    // scene is the final plane (to be mapped with the final subject)
    scene = new THREE.Scene();
@@ -1118,39 +1109,39 @@ function init() {
     
     ////////////////////////////////////////////////////////////////////////
     scene01 = new THREE.Scene();
-  camera01 = new THREE.OrthographicCamera (-50,50,50,-50,-10,100);
-  let loader01 = new THREE.TextureLoader();
-  loader01.setCrossOrigin ('');
-  let texture01 = loader01.load('./photome.png');  // olympus
-//  let texture = loader.load('https://i.imgur.com/NHXZYjr.png?2');  // gakki
+    camera01 = new THREE.OrthographicCamera (-50,50,50,-50,-10,100);
+    let loader01 = new THREE.TextureLoader();
+    loader01.setCrossOrigin ('');
+    let texture01 = loader01.load('./photome.png');  // olympus
+    //  let texture = loader.load('https://i.imgur.com/NHXZYjr.png?2');  // gakki
 
-   var uniforms01 = {
+    var uniforms01 = {
         imageSize: {
-          type: 'v2',
-          value: new THREE.Vector2(256,256)
+            type: 'v2',
+            value: new THREE.Vector2(256,256)
         },
         texture: {
-          type: 't',
-          value: texture01
+            type: 't',
+            value: texture01
         } ,
         which: {
-          type: 'i',
-          value: 0
+            type: 'i',
+            value: 0
         }
-  };
+    };
 
-  var vertShader01 = document.getElementById('vs-texSwap').textContent;
-  var fragShader01 = document.getElementById('fs-texSwap').textContent;
-  var material_shader01 = new THREE.ShaderMaterial({
-    uniforms: uniforms01,
-    vertexShader: vertShader01,
-    fragmentShader: fragShader01,
-    side: THREE.DoubleSide
-  });
+    var vertShader01 = document.getElementById('vs-texSwap').textContent;
+    var fragShader01 = document.getElementById('fs-texSwap').textContent;
+    var material_shader01 = new THREE.ShaderMaterial({
+        uniforms: uniforms01,
+        vertexShader: vertShader01,
+        fragmentShader: fragShader01,
+        side: THREE.DoubleSide
+    });
 
-  var geometry01 = new THREE.PlaneGeometry(100,100);
-  var mesh01 = new THREE.Mesh (geometry01, material_shader01);
-  scene01.add (mesh01)
+    var geometry01 = new THREE.PlaneGeometry(100,100);
+    var mesh01 = new THREE.Mesh (geometry01, material_shader01);
+    scene01.add (mesh01)
   //////////////////////////
     
   renderTarget02 = new THREE.WebGLRenderTarget(256, 256);
@@ -1208,7 +1199,7 @@ function init() {
   }
   setTimeout (incWhich, 0);
   
-  ///////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////***now
   ///////////////////////////////////////////////////////
   scene6 = new THREE.Scene(); 
 //  camera5 = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 1000);
@@ -1231,15 +1222,19 @@ function init() {
       value: null
     },
     headSize: {
-     type: 'f',
-     value: 0
+      type: 'f',
+      value: 0
+    },
+    imageSize: {
+      type: 'v2',
+      value: new THREE.Vector2(width, height)
     },
     texture: {
       type: 't',
       value: renderTarget5.texture
     }, 
     gran: {
-    	type: 'f',
+      type: 'f',
       value: 0
     }
   };
@@ -1252,11 +1247,13 @@ function init() {
   });
 
   plane6 = new THREE.Mesh (new THREE.PlaneGeometry (width,height), material_shh5 );
+    
 //  plane6.position.x = 10;
 //  plane6.position.y = 25;
 //  plane6.position.z = -1.5;
   //camera6 = new THREE.OrthographicCamera (-50,50,50,-50, -100,100);  
   scene6.add (plane6);
+  //plane6.position.set (width/2, height/2, 0);
     
   //////////////////////////////////////////////
   var onProgress5 = function(xhr) {
@@ -1540,18 +1537,24 @@ function animate() {
             material_shh5.uniforms.gran.value = 0;
             material_shh5.uniforms.headSize.value = 0;
         }
+        // renderer.clear();
         
         renderer.setRenderTarget (renderTarget5);
+        
+        renderer.render(scene5, camera);
+        renderer.setRenderTarget (null);
 //        renderer.clear();
         renderer.render(scene5, camera);
-
+        
+        renderer.setRenderTarget (null);
+        renderer.render(scene6, camera);
+        // renderer.render(scene5, camera);
         //renderer.setRenderTarget (null);
         //var temp_texture =  renderTarget5;
         //material_shh5.uniforms.texture = renderTarget5.texture;
-        //renderer.setRenderTarget (renderTarget5);
+
         //renderer.setRenderTarget (null);
-        renderer.setRenderTarget (null);
-        renderer.render(scene6, camera);
+        // renderer.render(scene6, camera);
     }
     
 }
