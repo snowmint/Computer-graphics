@@ -39,10 +39,7 @@
 
 <body> 
 <div id="info">
-  <br> final
-  <br> (bubble help)
-  <p id='hint'>  
-  </p>
+  <br> final(bubble help)<p id='hint'></p>
 </div>
 
 <!-- shader for eyeNormal Plot -->
@@ -1429,19 +1426,20 @@ function onDocumentMouseMove(event) {
             if (intersects[i].object === meshFinal02) {
                 $('#hint').text (meshFinal02.name + ' is hit');
                 sprite.visible = true;
-            }if (intersects[i].object === mesh_per) {
+            }else if (intersects[i].object === mesh_per) {
                 $('#hint').text (mesh_per.name + ' is hit');
                 sprite2.visible = true;
-            }if (intersects[i].object === planeXX) {
+            }else if (intersects[i].object === planeXX) {
                 $('#hint').text (subjectClone.name + ' is hit');
                 sprite3.visible = true;
-            }if (intersects[i].object === wall_entrys[0] || intersects[i].object === wall_entrys[1]||intersects[i].object === wall_entrys[2]) {
+            }else if ((intersects[i].object === wall_entrys[0] || intersects[i].object === wall_entrys[1]||intersects[i].object === wall_entrys[2])) {
                 $('#hint').text ('Wall is hit');
                 sprite4.visible = true;
             }
         }
         
-    } else {
+    }
+    else {
         $('#hint').text ('');
         sprite.visible = false;
         sprite2.visible = false;
